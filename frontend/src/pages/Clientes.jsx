@@ -1,0 +1,358 @@
+// ============================================================
+// PÁGINA: CLIENTES - GESTIÓN DE CLIENTES Y SUS SERVICIOS
+// ============================================================
+
+// 1 - IMPORTO REACT Y LOS HOOKS:
+import { useState, useEffect } from 'react';
+
+// 2 - IMPORTO LOS ÍCONOS:
+import { Plus, Users, Pencil, Trash2, ChevronDown, ChevronUp, Package, X } from 'lucide-react';
+
+// 3 - IMPORTO EL MODAL Y LA API:
+import Modal from '../components/Modal';
+import {
+  getClientes, getCliente, createCliente, updateCliente, deleteCliente,
+  getServicios, asignarServicio, quitarServicio
+} from '../api/index';
+
+// 4 - ESTADO INICIAL DEL FORMULARIO:
+const FORM_VACIO = { razon_social: '', cuit: '', direccion: '', email: '', telefono: '' };
+
+export default function Clientes() {
+
+  // 5 - DEFINO EL ESTADO LOCAL:
+  const [clientes,       setClientes]       = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [modalAbierto,   setModalAbierto]   = useState(false);
+  const [modalServicios, setModalServicios] = useState(false);
+  const [editando,       setEditando]       = useState(null);
+  const [clienteActivo,  setClienteActivo]  = useState(null); // para asignar servicios
+  const [expandido,      setExpandido]      = useState(null); // id del cliente expandido
+  const [form,           setForm]           = useState(FORM_VACIO);
+  const [guardando,      setGuardando]      = useState(false);
+  const [serviciosTodos, setServiciosTodos] = useState([]);
+  const [detalleCliente, setDetalleCliente] = useState(null);
+
+  // 6 - CARGO LOS CLIENTES AL MONTAR:
+  useEffect(() => { cargarClientes(); }, []);
+
+  // 7 - FUNCIÓN QUE TRAE TODOS LOS CLIENTES:
+  async function cargarClientes() {
+    try {
+      setLoading(true);
+      const data = await getClientes();
+      setClientes(data);
+    } catch (err) {
+      console.error('Error al cargar clientes:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 8 - EXPANDO O COLAPSO UN CLIENTE PARA VER SUS SERVICIOS:
+  async function toggleExpandido(cliente) {
+    if (expandido === cliente.id) {
+      setExpandido(null);
+      setDetalleCliente(null);
+      return;
+    }
+    try {
+      const detalle = await getCliente(cliente.id);
+      setDetalleCliente(detalle);
+      setExpandido(cliente.id);
+    } catch (err) {
+      console.error('Error al cargar detalle del cliente:', err);
+    }
+  }
+
+  // 9 - ABRO EL MODAL PARA CREAR UN CLIENTE:
+  function abrirCrear() {
+    setEditando(null);
+    setForm(FORM_VACIO);
+    setModalAbierto(true);
+  }
+
+  // 10 - ABRO EL MODAL PARA EDITAR UN CLIENTE:
+  function abrirEditar(cliente) {
+    setEditando(cliente);
+    setForm({
+      razon_social: cliente.razon_social || '',
+      cuit:         cliente.cuit || '',
+      direccion:    cliente.direccion || '',
+      email:        cliente.email || '',
+      telefono:     cliente.telefono || ''
+    });
+    setModalAbierto(true);
+  }
+
+  // 11 - ABRO EL MODAL PARA ASIGNAR SERVICIOS:
+  async function abrirAsignarServicios(cliente) {
+    try {
+      const [detalle, todos] = await Promise.all([getCliente(cliente.id), getServicios()]);
+      setDetalleCliente(detalle);
+      setClienteActivo(cliente);
+      setServiciosTodos(todos);
+      setModalServicios(true);
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  // 12 - GUARDO EL FORMULARIO (crear o editar):
+  async function handleGuardar() {
+    if (!form.razon_social) { alert('La razón social es obligatoria'); return; }
+    try {
+      setGuardando(true);
+      if (editando) {
+        // 12a - ACTUALIZO EL CLIENTE EXISTENTE:
+        await updateCliente(editando.id, form);
+      } else {
+        // 12b - CREO UN CLIENTE NUEVO:
+        await createCliente(form);
+      }
+      setModalAbierto(false);
+      cargarClientes();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  // 13 - ELIMINO UN CLIENTE PREVIA CONFIRMACIÓN:
+  async function handleEliminar(cliente) {
+    if (!confirm(`¿Eliminar a "${cliente.razon_social}"? Se borrarán sus pagos y asignaciones.`)) return;
+    try {
+      await deleteCliente(cliente.id);
+      cargarClientes();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  // 14 - ASIGNO UN SERVICIO AL CLIENTE ACTIVO:
+  async function handleAsignar(servicioId) {
+    try {
+      await asignarServicio(clienteActivo.id, servicioId);
+      const detalle = await getCliente(clienteActivo.id);
+      setDetalleCliente(detalle);
+      cargarClientes();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  // 15 - QUITO UN SERVICIO DEL CLIENTE ACTIVO:
+  async function handleQuitarServicio(servicioId) {
+    if (!confirm('¿Quitar este servicio? Se eliminarán sus pagos pendientes.')) return;
+    try {
+      await quitarServicio(clienteActivo.id, servicioId);
+      const detalle = await getCliente(clienteActivo.id);
+      setDetalleCliente(detalle);
+      cargarClientes();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  // 16 - ACTUALIZO EL ESTADO DEL FORMULARIO:
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  // 17 - PANTALLA DE CARGA:
+  if (loading) return <div className="empty-state" style={{ paddingTop: 80 }}><p>Cargando...</p></div>;
+
+  // 18 - IDs DE SERVICIOS YA ASIGNADOS AL CLIENTE ACTIVO:
+  const idsAsignados = detalleCliente?.servicios?.map(s => s.id) ?? [];
+
+  // 19 - RENDERIZO LA PÁGINA:
+  return (
+    <>
+      {/* CABECERA */}
+      <div className="page-header">
+        <h1>Clientes</h1>
+        <p>{clientes.length} cliente{clientes.length !== 1 ? 's' : ''} registrado{clientes.length !== 1 ? 's' : ''}</p>
+      </div>
+
+      {/* LISTA DE CLIENTES */}
+      {clientes.length === 0 ? (
+        <div className="empty-state">
+          <div className="es-icon"><Users size={28} /></div>
+          <h3>Sin clientes</h3>
+          <p>Tocá el botón + para agregar tu primer cliente</p>
+        </div>
+      ) : (
+        <div className="desktop-grid-2">
+          {clientes.map((c) => (
+            <div key={c.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+
+              {/* FILA PRINCIPAL DEL CLIENTE */}
+              <div className="flex items-center gap-12" style={{ padding: '16px 20px' }}>
+
+                {/* AVATAR */}
+                <div className="list-item-icon" style={{ background: '#EDE9FE' }}>
+                  <Users size={18} color="#7C3AED" />
+                </div>
+
+                {/* INFO */}
+                <div className="list-item-info" onClick={() => toggleExpandido(c)} style={{ cursor: 'pointer' }}>
+                  <h3>{c.razon_social}</h3>
+                  <p style={{ margin: 0, marginTop: 2 }}>
+                    {c.total_servicios} servicio{c.total_servicios !== 1 ? 's' : ''}
+                    {c.pagos_pendientes > 0 && (
+                      <span className="badge badge-pendiente" style={{ marginLeft: 8 }}>
+                        {c.pagos_pendientes} pendiente{c.pagos_pendientes !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* BOTONES */}
+                <div className="list-item-actions">
+                  <button className="btn-icon" onClick={() => abrirEditar(c)} title="Editar">
+                    <Pencil size={15} />
+                  </button>
+                  <button className="btn-icon" onClick={() => handleEliminar(c)} title="Eliminar"
+                    style={{ color: '#EF4444' }}>
+                    <Trash2 size={15} />
+                  </button>
+                  <button className="btn-icon" onClick={() => toggleExpandido(c)}>
+                    {expandido === c.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* PANEL EXPANDIDO: SERVICIOS DEL CLIENTE */}
+              {expandido === c.id && detalleCliente && (
+                <div style={{
+                  borderTop: '1px solid #E5E7EB',
+                  background: '#F9FAFB',
+                  padding: '12px 20px 16px'
+                }}>
+                  <div className="flex items-center justify-between mb-8">
+                    <p className="section-title" style={{ margin: 0 }}>Servicios asignados</p>
+                    <button className="btn btn-secondary btn-sm" onClick={() => abrirAsignarServicios(c)}>
+                      <Package size={13} /> Gestionar
+                    </button>
+                  </div>
+
+                  {detalleCliente.servicios.length === 0 ? (
+                    <p style={{ fontSize: '0.82rem', color: '#9CA3AF' }}>Sin servicios asignados</p>
+                  ) : (
+                    detalleCliente.servicios.map((s) => (
+                      <div key={s.id} className="flex items-center gap-8" style={{ marginBottom: 6 }}>
+                        <Package size={14} color="#3B82F6" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{s.nombre}</span>
+                        <span className={`badge badge-${s.tipo_facturacion}`}>{s.tipo_facturacion}</span>
+                      </div>
+                    ))
+                  )}
+
+                  <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px dashed #E5E7EB', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {c.cuit && <p style={{ fontSize: '0.78rem', color: '#6B7280' }}>🆔 <b>CUIT:</b> {c.cuit}</p>}
+                    {c.direccion && <p style={{ fontSize: '0.78rem', color: '#6B7280' }}>📍 <b>Dirección:</b> {c.direccion}</p>}
+                    {c.email && <p style={{ fontSize: '0.78rem', color: '#6B7280' }}>📧 <b>Email:</b> {c.email}</p>}
+                    {c.telefono && <p style={{ fontSize: '0.78rem', color: '#6B7280' }}>📞 <b>Teléfono:</b> {c.telefono}</p>}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* FAB: BOTÓN FLOTANTE PARA AGREGAR */}
+      <button className="fab" onClick={abrirCrear} title="Nuevo cliente">
+        <Plus size={24} />
+      </button>
+
+      {/* MODAL: FORMULARIO CREAR / EDITAR CLIENTE */}
+      <Modal
+        isOpen={modalAbierto}
+        onClose={() => setModalAbierto(false)}
+        title={editando ? 'Editar cliente' : 'Nuevo cliente'}
+      >
+        <div className="form-group">
+          <label>Nombre Razón Social *</label>
+          <input name="razon_social" value={form.razon_social} onChange={handleChange} placeholder="Nombre legal de la empresa o cliente" />
+        </div>
+        <div className="form-group">
+          <label>CUIT</label>
+          <input name="cuit" value={form.cuit} onChange={handleChange} placeholder="Número de CUIT" />
+        </div>
+        <div className="form-group">
+          <label>Dirección</label>
+          <input name="direccion" value={form.direccion} onChange={handleChange} placeholder="Dirección física" />
+        </div>
+        <div className="form-group">
+          <label>Teléfono</label>
+          <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="Ej: 11 2345-6789" />
+        </div>
+        <div className="form-group">
+          <label>Email</label>
+          <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="correo@ejemplo.com" />
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-ghost" onClick={() => setModalAbierto(false)}>Cancelar</button>
+          <button className="btn btn-primary" onClick={handleGuardar} disabled={guardando}>
+            {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear cliente'}
+          </button>
+        </div>
+      </Modal>
+
+      {/* MODAL: GESTIONAR SERVICIOS DEL CLIENTE */}
+      <Modal
+        isOpen={modalServicios}
+        onClose={() => setModalServicios(false)}
+        title={`Servicios de ${clienteActivo?.razon_social ?? ''}`}
+      >
+        {/* SERVICIOS YA ASIGNADOS */}
+        <p className="section-title">Asignados</p>
+        {idsAsignados.length === 0 ? (
+          <p style={{ fontSize: '0.82rem', color: '#9CA3AF', marginBottom: 16 }}>Sin servicios</p>
+        ) : (
+          detalleCliente?.servicios?.map((s) => (
+            <div key={s.id} className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-8">
+                <Package size={15} color="#3B82F6" />
+                <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{s.nombre}</span>
+                <span className={`badge badge-${s.tipo_facturacion}`}>{s.tipo_facturacion}</span>
+              </div>
+              <button className="btn-icon" onClick={() => handleQuitarServicio(s.id)}
+                style={{ color: '#EF4444' }} title="Quitar">
+                <X size={15} />
+              </button>
+            </div>
+          ))
+        )}
+
+        {/* SERVICIOS DISPONIBLES PARA ASIGNAR */}
+        <p className="section-title" style={{ marginTop: 20 }}>Disponibles para asignar</p>
+        {serviciosTodos.filter(s => !idsAsignados.includes(s.id)).length === 0 ? (
+          <p style={{ fontSize: '0.82rem', color: '#9CA3AF' }}>Todos los servicios ya están asignados</p>
+        ) : (
+          serviciosTodos
+            .filter(s => !idsAsignados.includes(s.id))
+            .map((s) => (
+              <div key={s.id} className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-8">
+                  <Package size={15} color="#9CA3AF" />
+                  <span style={{ fontSize: '0.875rem' }}>{s.nombre}</span>
+                  <span className={`badge badge-${s.tipo_facturacion}`}>{s.tipo_facturacion}</span>
+                </div>
+                <button className="btn btn-secondary btn-sm" onClick={() => handleAsignar(s.id)}>
+                  <Plus size={12} /> Asignar
+                </button>
+              </div>
+            ))
+        )}
+
+        <div className="modal-actions">
+          <button className="btn btn-primary w-full" onClick={() => setModalServicios(false)}>
+            Listo
+          </button>
+        </div>
+      </Modal>
+    </>
+  );
+}

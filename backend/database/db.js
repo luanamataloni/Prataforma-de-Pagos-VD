@@ -135,6 +135,52 @@ try {
   // Silencioso: los usuarios ya existen
 }
 
-// 8 - EXPORTO LA CONEXIÓN PARA USARLA EN TODA LA APP:
+// 8 - MIGRACIÓN DE LA TABLA FACTURAS:
+// Agrego cliente_adm_id y hago client_id nullable para soportar facturas de clientes admin
+try {
+  const cols = db.prepare("PRAGMA table_info(facturas)").all();
+  const yaExisteClienteAdmId = cols.some(c => c.name === 'cliente_adm_id');
+  const clientIdEsNotNull    = cols.find(c => c.name === 'client_id')?.notnull === 1;
+
+  if (!yaExisteClienteAdmId || clientIdEsNotNull) {
+    // 8a - DESACTIVO FOREIGN KEYS PARA LA MIGRACIÓN:
+    db.pragma('foreign_keys = OFF');
+
+    // 8b - CREO LA NUEVA TABLA CON EL ESQUEMA ACTUALIZADO:
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS facturas_v2 (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id      INTEGER,
+        cliente_adm_id INTEGER,
+        periodo        TEXT    NOT NULL,
+        total          REAL    NOT NULL DEFAULT 0,
+        estado         TEXT    NOT NULL DEFAULT 'pendiente' CHECK(estado IN ('pendiente', 'pagado')),
+        comprobante    TEXT,
+        created_at     TEXT    DEFAULT (datetime('now')),
+        FOREIGN KEY (client_id)      REFERENCES clients(id)  ON DELETE CASCADE,
+        FOREIGN KEY (cliente_adm_id) REFERENCES clientes(id) ON DELETE CASCADE
+      );
+    `);
+
+    // 8c - COPIO LOS DATOS EXISTENTES A LA NUEVA TABLA:
+    db.exec(`
+      INSERT OR IGNORE INTO facturas_v2 (id, client_id, periodo, total, estado, comprobante, created_at)
+      SELECT id, client_id, periodo, total, estado, comprobante, created_at FROM facturas;
+    `);
+
+    // 8d - REEMPLAZO LA TABLA VIEJA POR LA NUEVA:
+    db.exec(`DROP TABLE facturas;`);
+    db.exec(`ALTER TABLE facturas_v2 RENAME TO facturas;`);
+
+    // 8e - REACTIVO FOREIGN KEYS:
+    db.pragma('foreign_keys = ON');
+    console.log('✅ Migración facturas: cliente_adm_id agregado, client_id nullable');
+  }
+} catch (migErr) {
+  db.pragma('foreign_keys = ON');
+  console.warn('⚠️  Migración facturas (no crítico):', migErr.message);
+}
+
+// 9 - EXPORTO LA CONEXIÓN PARA USARLA EN TODA LA APP:
 module.exports = db;
 

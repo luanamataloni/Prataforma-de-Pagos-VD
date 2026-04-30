@@ -16,7 +16,7 @@ const rutasClientsPortal  = require('./routes/clientsPortalRoutes');
 const rutasFacturasPortal = require('./routes/facturasPortalRoutes');
 
 // 3 - IMPORTO EL SERVICIO DE FACTURA (para generar cobros al iniciar):
-const { generarTodosPagosPendientes } = require('./services/facturaService');
+const { generarTodosPagosPendientes, migrarPagosAFacturas } = require('./services/facturaService');
 
 // 4 - CREO LA APP DE EXPRESS:
 const app  = express();
@@ -59,5 +59,15 @@ app.listen(PORT, () => {
     }
   } catch (err) {
     console.warn('⚠️  No se pudieron generar cobros al iniciar:', err.message);
+  }
+
+  // 11 - MIGRO PAGOS EXISTENTES A FACTURAS (idempotente: solo migra lo que falta):
+  try {
+    const migradas = migrarPagosAFacturas();
+    if (migradas > 0) {
+      console.log(`📄 Se migraron ${migradas} facturas desde el sistema de pagos anterior`);
+    }
+  } catch (err) {
+    console.warn('⚠️  No se pudieron migrar pagos a facturas:', err.message);
   }
 });

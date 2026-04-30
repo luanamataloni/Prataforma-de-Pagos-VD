@@ -5,6 +5,7 @@
 // 1 - IMPORTO LA CONEXIÓN A LA DB Y EL SERVICIO DE FACTURAS:
 const db            = require('../database/db');
 const pagosService  = require('../services/facturaService');
+const { sincronizarFacturaCliente } = pagosService;
 
 // ── GET /clientes - LISTA TODOS LOS CLIENTES ──
 const listarClientes = (req, res) => {
@@ -151,7 +152,11 @@ const asignarServicio = (req, res) => {
     // 5 - GENERO EL PRIMER PAGO AUTOMÁTICAMENTE:
     pagosService.generarPagoParaAsignacion(parseInt(id), parseInt(servicio_id));
 
-    res.status(201).json({ mensaje: 'Servicio asignado correctamente y pago generado' });
+    // 6 - SINCRONIZO / CREO LA FACTURA DEL PERÍODO PARA ESTE CLIENTE:
+    // (crea una nueva o actualiza la existente con todos los servicios activos)
+    sincronizarFacturaCliente(parseInt(id));
+
+    res.status(201).json({ mensaje: 'Servicio asignado correctamente y factura actualizada' });
   } catch (error) {
     res.status(500).json({ error: 'Error al asignar servicio', detalle: error.message });
   }
@@ -178,6 +183,9 @@ const quitarServicio = (req, res) => {
     db.prepare(`
       DELETE FROM cliente_servicios WHERE cliente_id = ? AND servicio_id = ?
     `).run(id, servicioId);
+
+    // 4 - SINCRONIZO LA FACTURA DEL PERÍODO (recalcula sin el servicio quitado):
+    sincronizarFacturaCliente(parseInt(id));
 
     res.json({ mensaje: 'Servicio quitado del cliente correctamente' });
   } catch (error) {

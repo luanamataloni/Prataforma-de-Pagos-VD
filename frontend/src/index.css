@@ -67,7 +67,12 @@
   padding: 0;
 }
 
-html { font-size: 16px; }
+html {
+  font-size: 16px;
+  /* RESERVA EL ESPACIO DE LA SCROLLBAR SIEMPRE PARA EVITAR SALTOS DE LAYOUT
+     CUANDO EL CONTENIDO CAMBIA DE ALTURA (ej: al filtrar facturas) */
+  scrollbar-gutter: stable;
+}
 
 body {
   font-family: var(--font);
@@ -1132,6 +1137,36 @@ p  { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6; }
 
 /* BOTÓN ANCHO COMPLETO */
 .w-full { width: 100%; }
+
+/* ===========================================================
+   27 - FACTURA PAGE - CARDS RESPONSIVAS
+   =========================================================== */
+
+/* DISEÑO DE TARJETA PARA ESCRITORIO (POR DEFECTO OCULTO EN MÓVIL) */
+.factura-card-desktop {
+  display: none !important;
+}
+
+/* DISEÑO DE TARJETA PARA MÓVIL (VISIBLE POR DEFECTO) */
+.factura-card-mobile {
+  display: flex !important;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+  cursor: pointer;
+}
+
+@media (min-width: 768px) {
+  .factura-card-desktop {
+    display: flex !important;
+    align-items: center;
+    padding: 18px 22px;
+    cursor: pointer;
+  }
+  .factura-card-mobile {
+    display: none !important;
+  }
+}
 
 /* ===========================================================
    26 - PRINT - ESTILOS PARA IMPRESIÓN DE FACTURAS

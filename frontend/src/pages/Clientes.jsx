@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 
 // 2 - IMPORTO LOS ÍCONOS:
-import { Plus, Users, Pencil, Trash2, ChevronDown, ChevronUp, Package, X } from 'lucide-react';
+import { Plus, Users, Pencil, Trash2, ChevronDown, ChevronUp, Package, X, Camera } from 'lucide-react';
 
 // 3 - IMPORTO EL MODAL Y LA API:
 import Modal from '../components/Modal';
@@ -29,6 +29,8 @@ export default function Clientes() {
   const [clienteActivo,  setClienteActivo]  = useState(null); // para asignar servicios
   const [expandido,      setExpandido]      = useState(null); // id del cliente expandido
   const [form,           setForm]           = useState(FORM_VACIO);
+  const [fotoFile,       setFotoFile]       = useState(null);
+  const [preview,        setPreview]        = useState(null);
   const [guardando,      setGuardando]      = useState(false);
   const [serviciosTodos, setServiciosTodos] = useState([]);
   const [detalleCliente, setDetalleCliente] = useState(null);
@@ -69,6 +71,8 @@ export default function Clientes() {
   function abrirCrear() {
     setEditando(null);
     setForm(FORM_VACIO);
+    setFotoFile(null);
+    setPreview(null);
     setModalAbierto(true);
   }
 
@@ -82,6 +86,8 @@ export default function Clientes() {
       email:        cliente.email || '',
       telefono:     cliente.telefono || ''
     });
+    setFotoFile(null);
+    setPreview(cliente.foto_perfil ? `http://localhost:3001${cliente.foto_perfil}` : null);
     setModalAbierto(true);
   }
 
@@ -103,12 +109,23 @@ export default function Clientes() {
     if (!form.razon_social) { alert('La razón social es obligatoria'); return; }
     try {
       setGuardando(true);
+
+      // PREPARO LOS DATOS (FormData solo si hay foto, si no JSON normal)
+      let dataToSend;
+      if (fotoFile) {
+        dataToSend = new FormData();
+        Object.entries(form).forEach(([key, val]) => dataToSend.append(key, val));
+        dataToSend.append('foto', fotoFile);
+      } else {
+        dataToSend = form;
+      }
+
       if (editando) {
         // 12a - ACTUALIZO EL CLIENTE EXISTENTE:
-        await updateCliente(editando.id, form);
+        await updateCliente(editando.id, dataToSend);
       } else {
         // 12b - CREO UN CLIENTE NUEVO:
-        await createCliente(form);
+        await createCliente(dataToSend);
       }
       setModalAbierto(false);
       cargarClientes();
@@ -158,6 +175,14 @@ export default function Clientes() {
   // 16 - ACTUALIZO EL ESTADO DEL FORMULARIO:
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFotoFile(file);
+      setPreview(URL.createObjectURL(file));
+    }
+  };
+
   // 17 - PANTALLA DE CARGA:
   if (loading) return <div className="empty-state" style={{ paddingTop: 80 }}><p>Cargando...</p></div>;
 
@@ -189,8 +214,26 @@ export default function Clientes() {
               <div className="flex items-center gap-12" style={{ padding: '16px 20px' }}>
 
                 {/* AVATAR */}
-                <div className="list-item-icon" style={{ background: '#EDE9FE' }}>
-                  <Users size={18} color="#7C3AED" />
+                <div style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  background: '#EDE9FE',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {c.foto_perfil ? (
+                    <img
+                      src={`http://localhost:3001${c.foto_perfil}`}
+                      alt={c.razon_social}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <Users size={18} color="#7C3AED" />
+                  )}
                 </div>
 
                 {/* INFO */}
@@ -272,6 +315,47 @@ export default function Clientes() {
         onClose={() => setModalAbierto(false)}
         title={editando ? 'Editar cliente' : 'Nuevo cliente'}
       >
+        {/* CARGA DE FOTO */}
+        <div className="flex flex-col items-center mb-20">
+          <div style={{
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            background: '#F3F4F6',
+            border: '2px dashed #D1D5DB',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+            cursor: 'pointer'
+          }} onClick={() => document.getElementById('foto-input').click()}>
+            {preview ? (
+              <img src={preview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <Camera size={24} color="#9CA3AF" />
+            )}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              width: '100%',
+              background: 'rgba(0,0,0,0.4)',
+              padding: '2px 0',
+              textAlign: 'center'
+            }}>
+              <Plus size={12} color="white" />
+            </div>
+          </div>
+          <input
+            id="foto-input"
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
+          <p style={{ fontSize: '0.7rem', color: '#6B7280', marginTop: 8 }}>Foto de perfil (opcional)</p>
+        </div>
+
         <div className="form-group">
           <label>Nombre Razón Social *</label>
           <input name="razon_social" value={form.razon_social} onChange={handleChange} placeholder="Nombre legal de la empresa o cliente" />

@@ -52,10 +52,31 @@ export const getClientes   = ()         => request('/clientes');
 export const getCliente    = (id)       => request(`/clientes/${id}`);
 
 // 8 - CREO UN CLIENTE:
-export const createCliente = (data)     => request('/clientes', { method: 'POST', body: JSON.stringify(data) });
+export const createCliente = (data) => {
+  // 37 - SI LOS DATOS SON FormData (para archivos), NO usamos el helper request estándar:
+  if (data instanceof FormData) {
+    const token = getToken();
+    return fetch(`${BASE}/clientes`, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: data
+    }).then(res => res.json());
+  }
+  return request('/clientes', { method: 'POST', body: JSON.stringify(data) });
+};
 
 // 9 - ACTUALIZO UN CLIENTE:
-export const updateCliente = (id, data) => request(`/clientes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const updateCliente = (id, data) => {
+  if (data instanceof FormData) {
+    const token = getToken();
+    return fetch(`${BASE}/clientes/${id}`, {
+      method: 'PUT',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: data
+    }).then(res => res.json());
+  }
+  return request(`/clientes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+};
 
 // 10 - ELIMINO UN CLIENTE:
 export const deleteCliente = (id)       => request(`/clientes/${id}`, { method: 'DELETE' });

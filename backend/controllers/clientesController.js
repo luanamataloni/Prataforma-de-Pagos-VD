@@ -6,6 +6,8 @@
 const db            = require('../database/db');
 const pagosService  = require('../services/facturaService');
 const { sincronizarFacturaCliente } = pagosService;
+const path = require('path');
+const fs = require('fs');
 
 // ── GET /clientes - LISTA TODOS LOS CLIENTES ──
 const listarClientes = (req, res) => {
@@ -58,15 +60,16 @@ const obtenerCliente = (req, res) => {
 const crearCliente = (req, res) => {
   try {
     const { razon_social, cuit, direccion, email, telefono } = req.body;
+    const foto_perfil = req.file ? `/uploads/clientes/${req.file.filename}` : null;
 
     // 1 - VALIDO EL CAMPO REQUERIDO (Razón Social):
     if (!razon_social) return res.status(400).json({ error: 'La Razón Social es requerida' });
 
     // 2 - INSERTO EL CLIENTE EN LA DB:
     const resultado = db.prepare(`
-      INSERT INTO clientes (razon_social, cuit, direccion, email, telefono)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(razon_social, cuit || null, direccion || null, email || null, telefono || null);
+      INSERT INTO clientes (razon_social, cuit, direccion, email, telefono, foto_perfil)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(razon_social, cuit || null, direccion || null, email || null, telefono || null, foto_perfil);
 
     // 3 - DEVUELVO EL CLIENTE RECIÉN CREADO:
     const nuevoCliente = db.prepare(`SELECT * FROM clientes WHERE id = ?`).get(resultado.lastInsertRowid);
@@ -81,10 +84,17 @@ const actualizarCliente = (req, res) => {
   try {
     const { id } = req.params;
     const { razon_social, cuit, direccion, email, telefono } = req.body;
+    let foto_perfil = req.file ? `/uploads/clientes/${req.file.filename}` : undefined;
 
     // 1 - VERIFICO QUE EL CLIENTE EXISTE:
-    const clienteExistente = db.prepare(`SELECT id FROM clientes WHERE id = ?`).get(id);
+    const clienteExistente = db.prepare(`SELECT * FROM clientes WHERE id = ?`).get(id);
     if (!clienteExistente) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+    // 1b - SI SE SUBE UNA NUEVA FOTO, BORRO LA ANTERIOR (opcional):
+    if (foto_perfil && clienteExistente.foto_perfil) {
+      const rutaAnterior = path.join(__dirname, '..', clienteExistente.foto_perfil);
+      if (fs.existsSync(rutaAnterior)) fs.unlinkSync(rutaAnterior);
+    }
 
     // 2 - ACTUALIZO LOS DATOS DEL CLIENTE:
     db.prepare(`
@@ -93,9 +103,10 @@ const actualizarCliente = (req, res) => {
           cuit         = COALESCE(?, cuit),
           direccion    = COALESCE(?, direccion),
           email        = COALESCE(?, email),
-          telefono     = COALESCE(?, telefono)
+          telefono     = COALESCE(?, telefono),
+          foto_perfil  = COALESCE(?, foto_perfil)
       WHERE id = ?
-    `).run(razon_social || null, cuit || null, direccion || null, email || null, telefono || null, id);
+    `).run(razon_social || null, cuit || null, direccion || null, email || null, telefono || null, foto_perfil !== undefined ? foto_perfil : null, id);
 
     // 3 - DEVUELVO EL CLIENTE ACTUALIZADO:
     const clienteActualizado = db.prepare(`SELECT * FROM clientes WHERE id = ?`).get(id);
@@ -221,4 +232,3 @@ module.exports = {
   quitarServicio,
   obtenerPagosCliente
 };
-

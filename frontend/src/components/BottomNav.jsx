@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 
 // 2 - ÍTEMS SEGÚN ROL:
 const ADMIN_NAV = [
-  { to: '/',          icon: LayoutDashboard, label: 'Inicio'    },
+  { to: '/',          icon: LayoutDashboard, label: 'Resumen'   },
   { to: '/clientes',  icon: Users,           label: 'Clientes'  },
   { to: '/servicios', icon: Package,         label: 'Servicios' },
   { to: '/factura',   icon: CreditCard,      label: 'Facturas'  },

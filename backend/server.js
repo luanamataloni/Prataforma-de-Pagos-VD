@@ -8,12 +8,15 @@ const cors    = require('cors');
 const path = require('path');
 
 // 2 - IMPORTO LAS RUTAS:
-const rutasServicios = require('./routes/servicios');
-const rutasClientes  = require('./routes/clientes');
-const rutasPagos     = require('./routes/pagos');
+const rutasServicios      = require('./routes/servicios');
+const rutasClientes       = require('./routes/clientes');
+const rutasFactura        = require('./routes/factura');
+const rutasAuth           = require('./routes/authRoutes');
+const rutasClientsPortal  = require('./routes/clientsPortalRoutes');
+const rutasFacturasPortal = require('./routes/facturasPortalRoutes');
 
-// 3 - IMPORTO EL SERVICIO DE PAGOS (para generar pagos al iniciar):
-const { generarTodosPagosPendientes } = require('./services/pagosService');
+// 3 - IMPORTO EL SERVICIO DE FACTURA (para generar cobros al iniciar):
+const { generarTodosPagosPendientes } = require('./services/facturaService');
 
 // 4 - CREO LA APP DE EXPRESS:
 const app  = express();
@@ -27,9 +30,12 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 6 - REGISTRO LAS RUTAS:
-app.use('/servicios', rutasServicios);
-app.use('/clientes',  rutasClientes);
-app.use('/pagos',     rutasPagos);
+app.use('/servicios',       rutasServicios);
+app.use('/clientes',        rutasClientes);
+app.use('/factura',         rutasFactura);
+app.use('/auth',            rutasAuth);
+app.use('/portal/clients',  rutasClientsPortal);
+app.use('/facturas-portal', rutasFacturasPortal);
 
 // 7 - RUTA RAÍZ PARA VERIFICAR QUE EL SERVER ESTÁ VIVO:
 app.get('/', (req, res) => {
@@ -45,13 +51,13 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 
-  // 10 - AL INICIAR, GENERO PAGOS PENDIENTES DEL PERIODO ACTUAL:
+  // 10 - AL INICIAR, GENERO COBROS PENDIENTES DEL PERIODO ACTUAL:
   try {
     const pagosCreados = generarTodosPagosPendientes();
     if (pagosCreados > 0) {
-      console.log(`💰 Se generaron ${pagosCreados} nuevos pagos pendientes al iniciar`);
+      console.log(`💰 Se generaron ${pagosCreados} nuevos cobros pendientes al iniciar`);
     }
   } catch (err) {
-    console.warn('⚠️  No se pudieron generar pagos al iniciar:', err.message);
+    console.warn('⚠️  No se pudieron generar cobros al iniciar:', err.message);
   }
 });

@@ -5,11 +5,20 @@
 // 1 - DEFINO LA URL BASE DEL BACKEND (proxy configurado en vite.config.js):
 const BASE = '/api';
 
+// ── HELPER: OBTENGO EL TOKEN DEL localStorage ──
+function getToken() {
+  return localStorage.getItem('auth_token');
+}
+
 // ── HELPER: REALIZO UNA PETICIÓN Y PROCESO LA RESPUESTA ──
 async function request(url, options = {}) {
+  const token = getToken();
+  const defaultHeaders = { 'Content-Type': 'application/json' };
+  if (token) defaultHeaders['Authorization'] = `Bearer ${token}`;
+
   const response = await fetch(`${BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options
+    ...options,
+    headers: { ...defaultHeaders, ...(options.headers || {}) }
   });
 
   if (!response.ok) {
@@ -59,28 +68,28 @@ export const asignarServicio = (clienteId, servicioId) =>
 export const quitarServicio = (clienteId, servicioId) =>
   request(`/clientes/${clienteId}/servicios/${servicioId}`, { method: 'DELETE' });
 
-// 13 - OBTENGO LOS PAGOS DE UN CLIENTE:
-export const getPagosDeCliente = (clienteId) => request(`/clientes/${clienteId}/pagos`);
+// 13 - OBTENGO LAS FACTURAS DE UN CLIENTE:
+export const getPagosDeCliente = (clienteId) => request(`/clientes/${clienteId}/factura`);
 
-// ══════════════════ PAGOS ══════════════════
+// ══════════════════ FACTURAS ══════════════════
 
-// 14 - OBTENGO TODOS LOS PAGOS (con filtros opcionales):
+// 14 - OBTENGO TODAS LAS FACTURAS (con filtros opcionales):
 export const getPagos = (filtros = {}) => {
   const params = new URLSearchParams();
   if (filtros.estado)     params.append('estado',     filtros.estado);
   if (filtros.cliente_id) params.append('cliente_id', filtros.cliente_id);
   const query = params.toString();
-  return request(`/pagos${query ? `?${query}` : ''}`);
+  return request(`/factura${query ? `?${query}` : ''}`);
 };
 
-// 15 - ACTUALIZO UN PAGO (marcar como pagado, etc.):
-export const updatePago = (id, data) => request(`/pagos/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+// 15 - ACTUALIZO UNA FACTURA (marcar como pagado, etc.):
+export const updatePago = (id, data) => request(`/factura/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
-// 16 - GENERO LOS PAGOS PENDIENTES DEL PERIODO:
-export const generarPagos = () => request('/pagos/generar', { method: 'POST' });
+// 16 - GENERO LAS FACTURAS PENDIENTES DEL PERIODO:
+export const generarPagos = () => request('/factura/generar', { method: 'POST' });
 
 // 17 - OBTENGO LAS ESTADÍSTICAS GENERALES:
-export const getStats = () => request('/pagos/stats');
+export const getStats = () => request('/factura/stats');
 
 // 18 - SUBIDA DE ARCHIVOS (COMPROBANTES):
 export const uploadComprobante = async (id, file) => {
@@ -88,10 +97,11 @@ export const uploadComprobante = async (id, file) => {
   formData.append('comprobante', file);
 
   // NOTA: Para FormData no enviamos Content-Type manual, el navegador lo pone solo con el boundary
-  const response = await fetch(`${BASE}/pagos/${id}/upload`, {
+  const token = getToken();
+  const response = await fetch(`${BASE}/factura/${id}/upload`, {
     method: 'POST',
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
     body: formData
-    // No ponemos headers aquí para que el navegador maneje el boundary automáticamente
   });
 
   if (!response.ok) {
@@ -101,3 +111,27 @@ export const uploadComprobante = async (id, file) => {
 
   return response.json();
 };
+
+// ══════════════════ PORTAL DE FACTURAS ══════════════════
+
+// 19 - TRAIGO LA FACTURA DEL PERIODO ACTUAL (cliente):
+export const getFacturaPeriodoActual = () => request('/facturas-portal/periodo-actual');
+
+// 20 - LISTO TODAS LAS FACTURAS DEL PORTAL (admin: todas | cliente: las suyas):
+export const getFacturasPortal = () => request('/facturas-portal');
+
+// 21 - CREO UNA NUEVA FACTURA CON DETALLE (admin only):
+export const crearFacturaPortal = (data) => request('/facturas-portal', { method: 'POST', body: JSON.stringify(data) });
+
+// 22 - MARCO UNA FACTURA COMO PAGADA:
+export const pagarFactura = (id) => request(`/facturas-portal/${id}/pagar`, { method: 'PUT' });
+
+// ══════════════════ CLIENTES DEL PORTAL ══════════════════
+
+// 23 - LISTO LOS CLIENTES DEL PORTAL (admin only):
+export const getClientsPortal = () => request('/portal/clients');
+
+// 24 - CREO UN CLIENTE CON SU CUENTA DE USUARIO (admin only):
+export const createClientPortal = (data) => request('/portal/clients', { method: 'POST', body: JSON.stringify(data) });
+
+

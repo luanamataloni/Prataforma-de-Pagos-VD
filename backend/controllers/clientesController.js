@@ -2,9 +2,9 @@
 // CONTROLADOR DE CLIENTES
 // ============================================================
 
-// 1 - IMPORTO LA CONEXIÓN A LA DB Y EL SERVICIO DE PAGOS:
+// 1 - IMPORTO LA CONEXIÓN A LA DB Y EL SERVICIO DE FACTURAS:
 const db            = require('../database/db');
-const pagosService  = require('../services/pagosService');
+const pagosService  = require('../services/facturaService');
 
 // ── GET /clientes - LISTA TODOS LOS CLIENTES ──
 const listarClientes = (req, res) => {
@@ -185,7 +185,24 @@ const quitarServicio = (req, res) => {
   }
 };
 
-// 4 - EXPORTO TODOS LOS CONTROLADORES:
+// ── GET /clientes/:id/factura - OBTIENE LOS COBROS DE UN CLIENTE ──
+const obtenerPagosCliente = (req, res) => {
+  try {
+    const { id } = req.params;
+    const pagos = db.prepare(`
+      SELECT p.*, s.nombre as servicio_nombre
+      FROM pagos p
+      JOIN servicios s ON p.servicio_id = s.id
+      WHERE p.cliente_id = ?
+      ORDER BY p.id DESC
+    `).all(id);
+    res.json(pagos);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener facturas', detalle: error.message });
+  }
+};
+
+// 6 - EXPORTO LOS CONTROLADORES:
 module.exports = {
   listarClientes,
   obtenerCliente,
@@ -193,6 +210,7 @@ module.exports = {
   actualizarCliente,
   eliminarCliente,
   asignarServicio,
-  quitarServicio
+  quitarServicio,
+  obtenerPagosCliente
 };
 

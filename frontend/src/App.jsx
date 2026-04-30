@@ -1,45 +1,63 @@
 // ============================================================
-// APP.JSX - COMPONENTE RAÍZ CON LAS RUTAS
+// APP.JSX - COMPONENTE RAÍZ CON AUTENTICACIÓN Y RUTAS
 // ============================================================
 
 // 1 - IMPORTO LAS RUTAS Y LOS COMPONENTES:
-import { Routes, Route } from 'react-router-dom';
-import BottomNav from './components/BottomNav';
-import TopNav    from './components/TopNav';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import BottomNav      from './components/BottomNav';
+import TopNav         from './components/TopNav';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // 2 - IMPORTO LAS PÁGINAS:
-import Dashboard from './pages/Dashboard';
-import Clientes  from './pages/Clientes';
-import Servicios from './pages/Servicios';
-import Pagos     from './pages/Pagos';
+import Dashboard     from './pages/Dashboard';
+import Clientes      from './pages/Clientes';
+import Servicios     from './pages/Servicios';
+import Factura       from './pages/Factura';
+import Login         from './pages/Login';
+import ClienteHome   from './pages/ClienteHome';
+import FacturasAdmin from './pages/FacturasAdmin';
 
-// 3 - DEFINO EL LAYOUT PRINCIPAL:
-// - En MOBILE:  BottomNav visible, TopNav oculto
-// - En DESKTOP: TopNav visible, BottomNav oculto (controlado por CSS)
-export default function App() {
+// 3 - LAYOUT PRINCIPAL (con nav):
+function AppLayout() {
+  const { user } = useAuth();
   return (
     <>
-      {/* MENÚ SUPERIOR (solo visible en desktop, oculto en mobile por CSS) */}
       <TopNav />
-
-      {/* CONTENEDOR PRINCIPAL */}
       <div className="app-layout">
-
-        {/* CONTENIDO DE CADA PÁGINA */}
         <div className="page-content">
           <Routes>
-            <Route path="/"          element={<Dashboard />} />
-            <Route path="/clientes"  element={<Clientes />}  />
-            <Route path="/servicios" element={<Servicios />} />
-            <Route path="/pagos"     element={<Pagos />}     />
+            {/* RUTAS DE ADMINISTRADOR */}
+            <Route path="/"               element={<ProtectedRoute adminOnly><Dashboard /></ProtectedRoute>} />
+            <Route path="/clientes"       element={<ProtectedRoute adminOnly><Clientes /></ProtectedRoute>} />
+            <Route path="/servicios"      element={<ProtectedRoute adminOnly><Servicios /></ProtectedRoute>} />
+            <Route path="/factura"        element={<ProtectedRoute adminOnly><Factura /></ProtectedRoute>} />
+            <Route path="/facturas-admin" element={<ProtectedRoute adminOnly><FacturasAdmin /></ProtectedRoute>} />
+
+            {/* RUTA DE CLIENTE (acceso solo a su home) */}
+            <Route path="/mi-cuenta"      element={<ProtectedRoute clientOnly><ClienteHome /></ProtectedRoute>} />
+
+            {/* FALLBACK */}
+            <Route path="*" element={<Navigate to={user?.role === 'client' ? '/mi-cuenta' : '/'} replace />} />
           </Routes>
         </div>
-
-        {/* MENÚ INFERIOR (solo visible en mobile, oculto en desktop por CSS) */}
         <BottomNav />
-
       </div>
     </>
   );
 }
 
+// 4 - APP RAÍZ CON PROVEEDOR DE AUTH:
+export default function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        {/* RUTA PÚBLICA */}
+        <Route path="/login" element={<Login />} />
+
+        {/* TODAS LAS DEMÁS RUTAS USAN EL LAYOUT CON NAV */}
+        <Route path="/*" element={<AppLayout />} />
+      </Routes>
+    </AuthProvider>
+  );
+}

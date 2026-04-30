@@ -18,9 +18,8 @@ router.delete('/:id', controller.eliminarCliente);
 router.post('/:id/servicios',               controller.asignarServicio);
 router.delete('/:id/servicios/:servicioId', controller.quitarServicio);
 
-// 4 - DEFINO LA RUTA DE PAGOS DE UN CLIENTE (delegada al controlador de pagos):
-const pagosController = require('../controllers/pagosController');
-router.get('/:id/pagos', pagosController.listarPagosDeCliente);
+// 4 - DEFINO LA RUTA DE FACTURAS DE UN CLIENTE:
+router.get('/:id/factura', controller.obtenerPagosCliente);
 
 // 5 - EXPORTO EL ROUTER:
 module.exports = router;

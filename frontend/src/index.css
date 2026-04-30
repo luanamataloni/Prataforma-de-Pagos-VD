@@ -216,6 +216,8 @@ p  { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6; }
 .btn-secondary {
   background: var(--color-primary-light);
   color: var(--color-primary);
+  font-weight: 600;
+  border: none;
 }
 .btn-secondary:hover { background: #DDD6FE; }
 
@@ -986,3 +988,214 @@ p  { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6; }
   border: none; /* Quitamos el borde sólido verde */
 }
 
+/* ===========================================================
+   25 - LOGIN PAGE - PANTALLA DE INICIO DE SESIÓN
+   =========================================================== */
+
+/* FONDO DEGRADADO DE LA PÁGINA */
+.login-page {
+  min-height: 100vh;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    var(--bg-main)            0%,
+    var(--color-primary-light) 60%,
+    #DDD6FE                   100%
+  );
+  padding: 20px;
+}
+
+/* TARJETA PRINCIPAL */
+.login-card {
+  background:    var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding:       44px 36px;
+  width:         100%;
+  max-width:     420px;
+  box-shadow:    var(--shadow-lg), 0 0 0 1px rgba(124,58,237,0.07);
+  animation:     slideUp 0.25s ease;
+}
+
+/* LOGO / ÍCONO */
+.login-logo {
+  text-align:    center;
+  margin-bottom: 36px;
+}
+
+.login-logo-icon {
+  width:            68px;
+  height:           68px;
+  background:       var(--color-primary-light);
+  border-radius:    var(--radius-lg);
+  display:          flex;
+  align-items:      center;
+  justify-content:  center;
+  margin:           0 auto 16px;
+  box-shadow:       0 4px 16px rgba(124,58,237,0.18);
+}
+
+.login-logo h1 {
+  font-size:   1.7rem;
+  margin-bottom: 4px;
+  background:  linear-gradient(90deg, var(--color-primary-dark), var(--color-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.login-logo p {
+  font-size: 0.875rem;
+  color:     var(--text-secondary);
+  margin:    0;
+}
+
+/* FORMULARIO */
+.login-form {
+  display:        flex;
+  flex-direction: column;
+  gap:            14px;
+}
+
+/* INPUTS CON ÍCONO A LA IZQUIERDA */
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon .input-icon {
+  position:       absolute;
+  left:           14px;
+  top:            50%;
+  transform:      translateY(-50%);
+  color:          var(--text-tertiary);
+  pointer-events: none;
+}
+
+.input-with-icon input {
+  padding-left: 42px !important;
+}
+
+/* BOTÓN PRINCIPAL DEL LOGIN */
+.login-btn {
+  margin-top:      4px;
+  padding:         13px 18px;
+  font-size:       0.9375rem;
+  justify-content: center;
+}
+
+/* MENSAJE DE ERROR */
+.login-error {
+  background:    var(--color-red-light);
+  color:         var(--color-red);
+  padding:       10px 14px;
+  border-radius: var(--radius-md);
+  font-size:     0.875rem;
+  font-weight:   500;
+  border-left:   3px solid var(--color-red);
+  animation:     fadeIn 0.15s ease;
+}
+
+/* USUARIOS DE PRUEBA (HINTS) */
+.login-hints {
+  margin-top:  24px;
+  padding-top: 20px;
+  border-top:  1px solid var(--border-color);
+}
+
+.login-hint-row {
+  display:       flex;
+  align-items:   center;
+  gap:           8px;
+  padding:       9px 14px;
+  background:    var(--bg-main);
+  border-radius: var(--radius-md);
+  margin-bottom: 6px;
+  cursor:        pointer;
+  transition:    var(--transition);
+  font-size:     0.8rem;
+  user-select:   none;
+  border:        1px solid transparent;
+}
+
+.login-hint-row:hover {
+  background:   var(--color-primary-light);
+  border-color: var(--color-primary);
+  color:        var(--color-primary);
+}
+
+.login-hint-row code {
+  color:       var(--color-primary);
+  font-weight: 600;
+  font-size:   0.78rem;
+}
+
+/* BOTÓN ANCHO COMPLETO */
+.w-full { width: 100%; }
+
+/* ===========================================================
+   26 - PRINT - ESTILOS PARA IMPRESIÓN DE FACTURAS
+   =========================================================== */
+
+@media print {
+
+  /* 1 - OCULTO TODA LA NAVEGACIÓN Y BOTONES: */
+  .top-nav,
+  .bottom-nav,
+  .page-header,
+  .filter-tabs,
+  .fab,
+  .btn,
+  .btn-pay-action,
+  .btn-doc,
+  .modal-overlay,
+  button { display: none !important; }
+
+  /* 2 - FONDO BLANCO LIMPIO: */
+  body, html {
+    background: #fff !important;
+    color:      #000 !important;
+    font-size:  12pt;
+  }
+
+  /* 3 - LA TABLA OCUPA TODO EL ANCHO: */
+  .modern-table,
+  .table-header-row,
+  .table-row {
+    box-shadow:  none !important;
+    border:      1px solid #ddd !important;
+    break-inside: avoid;
+  }
+
+  .table-row {
+    margin-bottom: 4px !important;
+    page-break-inside: avoid;
+  }
+
+  /* 4 - QUITO HOVER Y TRANSFORMACIONES AL IMPRIMIR: */
+  .table-row:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* 5 - EL CONTENEDOR PRINCIPAL SIN PADDING EXTRA: */
+  .app-layout,
+  .page-content {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* 6 - ELIMINO SOMBRAS DE TARJETAS: */
+  .card,
+  #factura-imprimible {
+    box-shadow: none !important;
+    border:     1px solid #ddd !important;
+  }
+
+  /* 7 - BADGES DE ESTADO VISIBLES EN IMPRESIÓN: */
+  .badge-pago.status-pagado   { background: #d1fae5 !important; color: #065f46 !important; }
+  .badge-pago.status-pendiente{ background: #dbeafe !important; color: #1e40af !important; }
+
+  /* 8 - SALTO DE PÁGINA ANTES DEL SEPARADOR DE CLIENTE: */
+  .client-separator { page-break-before: auto; }
+}

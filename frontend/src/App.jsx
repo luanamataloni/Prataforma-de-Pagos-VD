@@ -17,6 +17,7 @@ import Factura       from './pages/Factura';
 import Login         from './pages/Login';
 import ClienteHome   from './pages/ClienteHome';
 import FacturasAdmin from './pages/FacturasAdmin';
+import Perfil        from './pages/Perfil';
 
 // 3 - LAYOUT PRINCIPAL (con nav):
 function AppLayout() {
@@ -33,6 +34,7 @@ function AppLayout() {
             <Route path="/servicios"      element={<ProtectedRoute adminOnly><Servicios /></ProtectedRoute>} />
             <Route path="/factura"        element={<ProtectedRoute adminOnly><Factura /></ProtectedRoute>} />
             <Route path="/facturas-admin" element={<ProtectedRoute adminOnly><FacturasAdmin /></ProtectedRoute>} />
+            <Route path="/perfil"         element={<ProtectedRoute adminOnly><Perfil /></ProtectedRoute>} />
 
             {/* RUTA DE CLIENTE (acceso solo a su home) */}
             <Route path="/mi-cuenta"      element={<ProtectedRoute clientOnly><ClienteHome /></ProtectedRoute>} />

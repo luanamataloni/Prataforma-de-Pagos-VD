@@ -4,7 +4,7 @@
 
 // 1 - IMPORTO REACT ROUTER, ÍCONOS Y CONTEXTO:
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Package, CreditCard, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Package, CreditCard, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 // 2 - ÍTEMS SEGÚN ROL:
@@ -13,6 +13,7 @@ const ADMIN_NAV = [
   { to: '/clientes',  icon: Users,           label: 'Clientes'  },
   { to: '/servicios', icon: Package,         label: 'Servicios' },
   { to: '/factura',   icon: CreditCard,      label: 'Facturas'  },
+  { to: '/perfil',    icon: Settings,        label: 'Perfil'    },
 ];
 const CLIENT_NAV = [
   { to: '/mi-cuenta', icon: CreditCard, label: 'Mi Cuenta' },

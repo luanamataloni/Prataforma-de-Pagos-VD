@@ -181,6 +181,26 @@ try {
   console.warn('⚠️  Migración facturas (no crítico):', migErr.message);
 }
 
-// 9 - EXPORTO LA CONEXIÓN PARA USARLA EN TODA LA APP:
+// 9 - CREO LA TABLA DE CONFIGURACIÓN DEL PROVEEDOR (datos del admin):
+db.exec(`
+  CREATE TABLE IF NOT EXISTS configuracion (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    clave        TEXT NOT NULL UNIQUE,
+    valor        TEXT
+  );
+`);
+
+// 9a - INSERTO LOS VALORES POR DEFECTO SI NO EXISTEN:
+const configDefaults = [
+  { clave: 'razon_social', valor: '' },
+  { clave: 'rubro',        valor: '' },
+  { clave: 'cuit',         valor: '' },
+  { clave: 'direccion',    valor: '' },
+  { clave: 'telefono',     valor: '' },
+];
+const insertConfig = db.prepare(`INSERT OR IGNORE INTO configuracion (clave, valor) VALUES (?, ?)`);
+configDefaults.forEach(({ clave, valor }) => insertConfig.run(clave, valor));
+
+// 10 - EXPORTO LA CONEXIÓN PARA USARLA EN TODA LA APP:
 module.exports = db;
 

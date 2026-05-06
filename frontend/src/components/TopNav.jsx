@@ -97,6 +97,12 @@ export default function TopNav() {
     }
   }
 
+
+  // 11 - DETENGO LA PROPAGACIÓN PARA QUE EL DROPDOWN NO SE CIERRE AL HACER CLICK DENTRO DEL MODAL:
+  const handleModalClick = (e) => {
+    e.stopPropagation();
+  };
+
   return (
     <>
       <header className="top-nav">
@@ -206,40 +212,45 @@ export default function TopNav() {
       </header>
 
       {/* MODAL: NUEVO CLIENTE PORTAL */}
-      <Modal isOpen={modalUser} onClose={() => setModalUser(false)} title="Nuevo cliente portal">
-        <div className="form-group">
-          <label>Nombre *</label>
-          <input
-            value={formUser.nombre}
-            onChange={e => setFormUser({ ...formUser, nombre: e.target.value })}
-            placeholder="Ej: Juan Pérez"
-          />
-        </div>
-        <div className="form-group">
-          <label>Email *</label>
-          <input
-            type="email"
-            value={formUser.email}
-            onChange={e => setFormUser({ ...formUser, email: e.target.value })}
-            placeholder="juan@email.com"
-          />
-        </div>
-        <div className="form-group">
-          <label>Contraseña *</label>
-          <input
-            type="password"
-            value={formUser.password}
-            onChange={e => setFormUser({ ...formUser, password: e.target.value })}
-            placeholder="Mínimo 6 caracteres"
-          />
-        </div>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setModalUser(false)}>Cancelar</button>
-          <button className="btn btn-primary" onClick={handleCrearCliente} disabled={guardando}>
-            {guardando ? 'Creando...' : 'Crear cliente'}
-          </button>
-        </div>
-      </Modal>
+      <div onClick={handleModalClick}>
+        <Modal isOpen={modalUser} onClose={() => setModalUser(false)} title="Nuevo cliente portal">
+          <div className="form-group">
+            <label>Nombre *</label>
+            <input
+              value={formUser.nombre}
+              onChange={e => setFormUser({ ...formUser, nombre: e.target.value })}
+              placeholder="Ej: Juan Pérez"
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+          <div className="form-group">
+            <label>Email *</label>
+            <input
+              type="email"
+              value={formUser.email}
+              onChange={e => setFormUser({ ...formUser, email: e.target.value })}
+              placeholder="juan@email.com"
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+          <div className="form-group">
+            <label>Contraseña *</label>
+            <input
+              type="password"
+              value={formUser.password}
+              onChange={e => setFormUser({ ...formUser, password: e.target.value })}
+              placeholder="Mínimo 6 caracteres"
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+          <div className="modal-actions">
+            <button className="btn btn-ghost" onClick={() => setModalUser(false)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={handleCrearCliente} disabled={guardando}>
+              {guardando ? 'Creando...' : 'Crear cliente'}
+            </button>
+          </div>
+        </Modal>
+      </div>
     </>
   );
 }

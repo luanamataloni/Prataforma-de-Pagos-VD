@@ -51,7 +51,7 @@ export const getClientes   = ()         => request('/clientes');
 // 7 - OBTENGO UN CLIENTE CON SUS SERVICIOS:
 export const getCliente    = (id)       => request(`/clientes/${id}`);
 
-// 8 - CREO UN CLIENTE:
+// 8 - CREO UN CLIENTE (con opción de acceso al portal):
 export const createCliente = (data) => {
   // 37 - SI LOS DATOS SON FormData (para archivos), NO usamos el helper request estándar:
   if (data instanceof FormData) {
@@ -60,12 +60,15 @@ export const createCliente = (data) => {
       method: 'POST',
       headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       body: data
-    }).then(res => res.json());
+    }).then(res => res.json().then(json => {
+      if (!res.ok) throw new Error(json.error || `Error HTTP ${res.status}`);
+      return json;
+    }));
   }
   return request('/clientes', { method: 'POST', body: JSON.stringify(data) });
 };
 
-// 9 - ACTUALIZO UN CLIENTE:
+// 9 - ACTUALIZO UN CLIENTE (con opción de acceso al portal):
 export const updateCliente = (id, data) => {
   if (data instanceof FormData) {
     const token = getToken();
@@ -73,7 +76,10 @@ export const updateCliente = (id, data) => {
       method: 'PUT',
       headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       body: data
-    }).then(res => res.json());
+    }).then(res => res.json().then(json => {
+      if (!res.ok) throw new Error(json.error || `Error HTTP ${res.status}`);
+      return json;
+    }));
   }
   return request(`/clientes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 };

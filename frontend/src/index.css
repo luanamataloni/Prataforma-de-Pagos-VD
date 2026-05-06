@@ -1139,36 +1139,6 @@ p  { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6; }
 .w-full { width: 100%; }
 
 /* ===========================================================
-   27 - FACTURA PAGE - CARDS RESPONSIVAS
-   =========================================================== */
-
-/* DISEÑO DE TARJETA PARA ESCRITORIO (POR DEFECTO OCULTO EN MÓVIL) */
-.factura-card-desktop {
-  display: none !important;
-}
-
-/* DISEÑO DE TARJETA PARA MÓVIL (VISIBLE POR DEFECTO) */
-.factura-card-mobile {
-  display: flex !important;
-  flex-direction: column;
-  padding: 16px;
-  gap: 12px;
-  cursor: pointer;
-}
-
-@media (min-width: 768px) {
-  .factura-card-desktop {
-    display: flex !important;
-    align-items: center;
-    padding: 18px 22px;
-    cursor: pointer;
-  }
-  .factura-card-mobile {
-    display: none !important;
-  }
-}
-
-/* ===========================================================
    26 - PRINT - ESTILOS PARA IMPRESIÓN DE FACTURAS
    =========================================================== */
 

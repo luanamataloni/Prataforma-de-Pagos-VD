@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 
 // 2 - IMPORTO LOS ÍCONOS:
-import { Plus, Users, Pencil, Trash2, ChevronDown, ChevronUp, Package, X, Camera } from 'lucide-react';
+import { Plus, Users, Pencil, Trash2, ChevronDown, ChevronUp, Package, X, Camera, ShieldCheck, ShieldOff, KeyRound } from 'lucide-react';
 
 // 3 - IMPORTO EL MODAL Y LA API:
 import Modal from '../components/Modal';
@@ -16,7 +16,17 @@ import {
 } from '../api/index';
 
 // 4 - ESTADO INICIAL DEL FORMULARIO:
-const FORM_VACIO = { razon_social: '', cuit: '', direccion: '', email: '', telefono: '' };
+const FORM_VACIO = {
+  razon_social:  '',
+  cuit:          '',
+  direccion:     '',
+  email:         '',
+  telefono:      '',
+  // CAMPOS DE ACCESO AL PORTAL (opcionales):
+  crear_acceso:  false,
+  user_email:    '',
+  user_password: ''
+};
 
 export default function Clientes() {
 
@@ -80,11 +90,15 @@ export default function Clientes() {
   function abrirEditar(cliente) {
     setEditando(cliente);
     setForm({
-      razon_social: cliente.razon_social || '',
-      cuit:         cliente.cuit || '',
-      direccion:    cliente.direccion || '',
-      email:        cliente.email || '',
-      telefono:     cliente.telefono || ''
+      razon_social:  cliente.razon_social  || '',
+      cuit:          cliente.cuit          || '',
+      direccion:     cliente.direccion     || '',
+      email:         cliente.email         || '',
+      telefono:      cliente.telefono      || '',
+      // SI YA TIENE ACCESO AL PORTAL, MUESTRO LA SECCIÓN PRE-COMPLETADA:
+      crear_acceso:  !!cliente.tiene_acceso,
+      user_email:    cliente.user_email    || '',
+      user_password: ''  // NUNCA pre-relleno la contraseña por seguridad
     });
     setFotoFile(null);
     setPreview(cliente.foto_perfil ? `http://localhost:3001${cliente.foto_perfil}` : null);
@@ -114,7 +128,11 @@ export default function Clientes() {
       let dataToSend;
       if (fotoFile) {
         dataToSend = new FormData();
-        Object.entries(form).forEach(([key, val]) => dataToSend.append(key, val));
+        // APPENDEO CADA CAMPO DEL FORM AL FORMDATA:
+        Object.entries(form).forEach(([key, val]) => {
+          // crear_acceso es boolean, lo convierto a string para que el backend lo lea bien:
+          dataToSend.append(key, String(val));
+        });
         dataToSend.append('foto', fotoFile);
       } else {
         dataToSend = form;
@@ -238,7 +256,27 @@ export default function Clientes() {
 
                 {/* INFO */}
                 <div className="list-item-info" onClick={() => toggleExpandido(c)} style={{ cursor: 'pointer' }}>
-                  <h3>{c.razon_social}</h3>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {c.razon_social}
+                    {/* INDICADOR DE ACCESO AL PORTAL */}
+                    {c.tiene_acceso ? (
+                      <span title={`Acceso: ${c.user_email}`} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        background: '#DCFCE7', color: '#15803D',
+                        borderRadius: 99, padding: '1px 8px', fontSize: '0.68rem', fontWeight: 700
+                      }}>
+                        <ShieldCheck size={11} /> Portal
+                      </span>
+                    ) : (
+                      <span title="Sin acceso al portal" style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        background: '#F3F4F6', color: '#9CA3AF',
+                        borderRadius: 99, padding: '1px 8px', fontSize: '0.68rem', fontWeight: 600
+                      }}>
+                        <ShieldOff size={11} /> Sin acceso
+                      </span>
+                    )}
+                  </h3>
                   <p style={{ margin: 0, marginTop: 2 }}>
                     {c.total_servicios} servicio{c.total_servicios !== 1 ? 's' : ''}
                     {c.pagos_pendientes > 0 && (
@@ -295,6 +333,11 @@ export default function Clientes() {
                     {c.direccion && <p style={{ fontSize: '0.78rem', color: '#6B7280' }}>📍 <b>Dirección:</b> {c.direccion}</p>}
                     {c.email && <p style={{ fontSize: '0.78rem', color: '#6B7280' }}>📧 <b>Email:</b> {c.email}</p>}
                     {c.telefono && <p style={{ fontSize: '0.78rem', color: '#6B7280' }}>📞 <b>Teléfono:</b> {c.telefono}</p>}
+                    {/* ACCESO AL PORTAL */}
+                    {c.tiene_acceso
+                      ? <p style={{ fontSize: '0.78rem', color: '#15803D' }}>🔐 <b>Acceso portal:</b> {c.user_email}</p>
+                      : <p style={{ fontSize: '0.78rem', color: '#9CA3AF' }}>🔒 Sin acceso al portal</p>
+                    }
                   </div>
                 </div>
               )}
@@ -315,72 +358,161 @@ export default function Clientes() {
         onClose={() => setModalAbierto(false)}
         title={editando ? 'Editar cliente' : 'Nuevo cliente'}
       >
-        {/* CARGA DE FOTO */}
-        <div className="flex flex-col items-center mb-20">
-          <div style={{
-            width: 80,
-            height: 80,
-            borderRadius: '50%',
-            background: '#F3F4F6',
-            border: '2px dashed #D1D5DB',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            cursor: 'pointer'
-          }} onClick={() => document.getElementById('foto-input').click()}>
-            {preview ? (
-              <img src={preview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <Camera size={24} color="#9CA3AF" />
-            )}
+        <div onClick={(e) => e.stopPropagation()}>
+          {/* CARGA DE FOTO */}
+          <div className="flex flex-col items-center mb-20">
             <div style={{
-              position: 'absolute',
-              bottom: 0,
-              width: '100%',
-              background: 'rgba(0,0,0,0.4)',
-              padding: '2px 0',
-              textAlign: 'center'
-            }}>
-              <Plus size={12} color="white" />
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              background: '#F3F4F6',
+              border: '2px dashed #D1D5DB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer'
+            }} onClick={() => document.getElementById('foto-input').click()}>
+              {preview ? (
+                <img src={preview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Vista previa" />
+              ) : (
+                <Camera size={24} color="#9CA3AF" />
+              )}
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                width: '100%',
+                background: 'rgba(0,0,0,0.4)',
+                padding: '2px 0',
+                textAlign: 'center'
+              }}>
+                <Plus size={12} color="white" />
+              </div>
             </div>
+            <input
+              id="foto-input"
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
+            <p style={{ fontSize: '0.7rem', color: '#6B7280', marginTop: 8 }}>Foto de perfil (opcional)</p>
           </div>
-          <input
-            id="foto-input"
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={handleFileChange}
-          />
-          <p style={{ fontSize: '0.7rem', color: '#6B7280', marginTop: 8 }}>Foto de perfil (opcional)</p>
-        </div>
 
-        <div className="form-group">
-          <label>Nombre Razón Social *</label>
-          <input name="razon_social" value={form.razon_social} onChange={handleChange} placeholder="Nombre legal de la empresa o cliente" />
-        </div>
-        <div className="form-group">
-          <label>CUIT</label>
-          <input name="cuit" value={form.cuit} onChange={handleChange} placeholder="Número de CUIT" />
-        </div>
-        <div className="form-group">
-          <label>Dirección</label>
-          <input name="direccion" value={form.direccion} onChange={handleChange} placeholder="Dirección física" />
-        </div>
-        <div className="form-group">
-          <label>Teléfono</label>
-          <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="Ej: 11 2345-6789" />
-        </div>
-        <div className="form-group">
-          <label>Email</label>
-          <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="correo@ejemplo.com" />
-        </div>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setModalAbierto(false)}>Cancelar</button>
-          <button className="btn btn-primary" onClick={handleGuardar} disabled={guardando}>
-            {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear cliente'}
-          </button>
+          <div className="form-group">
+            <label>Nombre Razón Social *</label>
+            <input name="razon_social" value={form.razon_social} onChange={handleChange} placeholder="Nombre legal de la empresa o cliente" />
+          </div>
+          <div className="form-group">
+            <label>CUIT</label>
+            <input name="cuit" value={form.cuit} onChange={handleChange} placeholder="Número de CUIT" />
+          </div>
+          <div className="form-group">
+            <label>Dirección</label>
+            <input name="direccion" value={form.direccion} onChange={handleChange} placeholder="Dirección física" />
+          </div>
+          <div className="form-group">
+            <label>Teléfono</label>
+            <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="Ej: 11 2345-6789" />
+          </div>
+          <div className="form-group">
+            <label>Email</label>
+            <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="correo@ejemplo.com" />
+          </div>
+
+          {/* ── SECCIÓN: ACCESO AL PORTAL ── */}
+          <div style={{
+            border: '1.5px solid var(--border-color)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '14px 16px',
+            marginBottom: 16,
+            background: form.crear_acceso ? '#F0FDF4' : 'var(--bg-secondary)',
+            transition: 'background 0.2s'
+          }}>
+            {/* TOGGLE: ACTIVAR/DESACTIVAR ACCESO */}
+            <div
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+              onClick={(e) => {
+                e.preventDefault();
+                setForm({ ...form, crear_acceso: !form.crear_acceso });
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <KeyRound size={16} color={form.crear_acceso ? '#15803D' : '#9CA3AF'} />
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: form.crear_acceso ? '#15803D' : 'var(--text-primary)' }}>
+                    {editando?.tiene_acceso ? 'Modificar acceso al portal' : 'Crear acceso al portal'}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    {editando?.tiene_acceso
+                      ? 'El cliente ya tiene acceso. Activá para cambiar sus credenciales.'
+                      : 'El cliente podrá ver sus facturas con estos datos.'}
+                  </div>
+                </div>
+              </div>
+              {/* TOGGLE VISUAL */}
+              <div style={{
+                width: 42, height: 24, borderRadius: 99,
+                background: form.crear_acceso ? '#22C55E' : '#D1D5DB',
+                position: 'relative', transition: 'background 0.2s', flexShrink: 0
+              }}>
+                <div style={{
+                  width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                  position: 'absolute', top: 3,
+                  left: form.crear_acceso ? 21 : 3,
+                  transition: 'left 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                }} />
+              </div>
+            </div>
+
+            {/* CAMPOS DE ACCESO (visibles solo cuando el toggle está ON) */}
+            {form.crear_acceso && (
+              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* ACLARACIÓN: EMAIL DE ACCESO vs EMAIL DE CONTACTO */}
+                <div style={{
+                  background: '#DBEAFE', borderRadius: 'var(--radius-md)',
+                  padding: '8px 12px', fontSize: '0.75rem', color: '#1D4ED8'
+                }}>
+                  📌 <b>Email de acceso</b> (credenciales de login) puede ser distinto al email de contacto del cliente.
+                </div>
+
+                {/* EMAIL DE ACCESO */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.78rem' }}>Email de acceso *</label>
+                  <input
+                    name="user_email"
+                    type="email"
+                    value={form.user_email}
+                    onChange={handleChange}
+                    placeholder="acceso@ejemplo.com"
+                  />
+                </div>
+
+                {/* CONTRASEÑA */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.78rem' }}>
+                    {editando?.tiene_acceso ? 'Nueva contraseña (dejá vacío para no cambiarla)' : 'Contraseña *'}
+                  </label>
+                  <input
+                    name="user_password"
+                    type="password"
+                    value={form.user_password}
+                    onChange={handleChange}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="modal-actions">
+            <button className="btn btn-ghost" onClick={() => setModalAbierto(false)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={handleGuardar} disabled={guardando}>
+              {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear cliente'}
+            </button>
+          </div>
         </div>
       </Modal>
 
@@ -390,51 +522,53 @@ export default function Clientes() {
         onClose={() => setModalServicios(false)}
         title={`Servicios de ${clienteActivo?.razon_social ?? ''}`}
       >
-        {/* SERVICIOS YA ASIGNADOS */}
-        <p className="section-title">Asignados</p>
-        {idsAsignados.length === 0 ? (
-          <p style={{ fontSize: '0.82rem', color: '#9CA3AF', marginBottom: 16 }}>Sin servicios</p>
-        ) : (
-          detalleCliente?.servicios?.map((s) => (
-            <div key={s.id} className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-8">
-                <Package size={15} color="#3B82F6" />
-                <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{s.nombre}</span>
-                <span className={`badge badge-${s.tipo_facturacion}`}>{s.tipo_facturacion}</span>
-              </div>
-              <button className="btn-icon" onClick={() => handleQuitarServicio(s.id)}
-                style={{ color: '#EF4444' }} title="Quitar">
-                <X size={15} />
-              </button>
-            </div>
-          ))
-        )}
-
-        {/* SERVICIOS DISPONIBLES PARA ASIGNAR */}
-        <p className="section-title" style={{ marginTop: 20 }}>Disponibles para asignar</p>
-        {serviciosTodos.filter(s => !idsAsignados.includes(s.id)).length === 0 ? (
-          <p style={{ fontSize: '0.82rem', color: '#9CA3AF' }}>Todos los servicios ya están asignados</p>
-        ) : (
-          serviciosTodos
-            .filter(s => !idsAsignados.includes(s.id))
-            .map((s) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          {/* SERVICIOS YA ASIGNADOS */}
+          <p className="section-title">Asignados</p>
+          {idsAsignados.length === 0 ? (
+            <p style={{ fontSize: '0.82rem', color: '#9CA3AF', marginBottom: 16 }}>Sin servicios</p>
+          ) : (
+            detalleCliente?.servicios?.map((s) => (
               <div key={s.id} className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-8">
-                  <Package size={15} color="#9CA3AF" />
-                  <span style={{ fontSize: '0.875rem' }}>{s.nombre}</span>
+                  <Package size={15} color="#3B82F6" />
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{s.nombre}</span>
                   <span className={`badge badge-${s.tipo_facturacion}`}>{s.tipo_facturacion}</span>
                 </div>
-                <button className="btn btn-secondary btn-sm" onClick={() => handleAsignar(s.id)}>
-                  <Plus size={12} /> Asignar
+                <button className="btn-icon" onClick={() => handleQuitarServicio(s.id)}
+                  style={{ color: '#EF4444' }} title="Quitar">
+                  <X size={15} />
                 </button>
               </div>
             ))
-        )}
+          )}
 
-        <div className="modal-actions">
-          <button className="btn btn-primary w-full" onClick={() => setModalServicios(false)}>
-            Listo
-          </button>
+          {/* SERVICIOS DISPONIBLES PARA ASIGNAR */}
+          <p className="section-title" style={{ marginTop: 20 }}>Disponibles para asignar</p>
+          {serviciosTodos.filter(s => !idsAsignados.includes(s.id)).length === 0 ? (
+            <p style={{ fontSize: '0.82rem', color: '#9CA3AF' }}>Todos los servicios ya están asignados</p>
+          ) : (
+            serviciosTodos
+              .filter(s => !idsAsignados.includes(s.id))
+              .map((s) => (
+                <div key={s.id} className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-8">
+                    <Package size={15} color="#9CA3AF" />
+                    <span style={{ fontSize: '0.875rem' }}>{s.nombre}</span>
+                    <span className={`badge badge-${s.tipo_facturacion}`}>{s.tipo_facturacion}</span>
+                  </div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleAsignar(s.id)}>
+                    <Plus size={12} /> Asignar
+                  </button>
+                </div>
+              ))
+          )}
+
+          <div className="modal-actions">
+            <button className="btn btn-primary w-full" onClick={() => setModalServicios(false)}>
+              Listo
+            </button>
+          </div>
         </div>
       </Modal>
     </>

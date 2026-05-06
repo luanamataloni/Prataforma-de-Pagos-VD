@@ -201,6 +201,19 @@ const configDefaults = [
 const insertConfig = db.prepare(`INSERT OR IGNORE INTO configuracion (clave, valor) VALUES (?, ?)`);
 configDefaults.forEach(({ clave, valor }) => insertConfig.run(clave, valor));
 
-// 10 - EXPORTO LA CONEXIÓN PARA USARLA EN TODA LA APP:
+// 10 - MIGRACIÓN: AGREGO user_id A LA TABLA clientes PARA VINCULAR ACCESO AL PORTAL:
+try {
+  const colsClientes = db.prepare("PRAGMA table_info(clientes)").all();
+  const yaExisteUserId = colsClientes.some(c => c.name === 'user_id');
+  if (!yaExisteUserId) {
+    // 10a - AGREGO LA COLUMNA user_id (nullable, FK a users):
+    db.exec(`ALTER TABLE clientes ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+    console.log('✅ Migración clientes: columna user_id agregada');
+  }
+} catch (migErr) {
+  console.warn('⚠️  Migración clientes user_id (no crítico):', migErr.message);
+}
+
+// 11 - EXPORTO LA CONEXIÓN PARA USARLA EN TODA LA APP:
 module.exports = db;
 

@@ -2,25 +2,29 @@
 // CONTROLADOR DE CLIENTES
 // ============================================================
 
-// 1 - IMPORTO LA CONEXIÓN A LA DB Y EL SERVICIO DE FACTURAS:
+// 1 - IMPORTO LA CONEXIÓN A LA DB, EL SERVICIO DE FACTURAS Y BCRYPT:
 const db            = require('../database/db');
 const pagosService  = require('../services/facturaService');
 const { sincronizarFacturaCliente } = pagosService;
-const path = require('path');
-const fs = require('fs');
+const path  = require('path');
+const fs    = require('fs');
+const bcrypt = require('bcryptjs');
 
 // ── GET /clientes - LISTA TODOS LOS CLIENTES ──
 const listarClientes = (req, res) => {
   try {
-    // 1 - TRAIGO TODOS LOS CLIENTES CON SUS ESTADÍSTICAS:
+    // 1 - TRAIGO TODOS LOS CLIENTES CON SUS ESTADÍSTICAS Y SI TIENEN USUARIO VINCULADO:
     const clientes = db.prepare(`
       SELECT
         c.*,
-        COUNT(DISTINCT cs.id)                                         AS total_servicios,
-        COUNT(DISTINCT CASE WHEN p.estado = 'pendiente' THEN p.id END) AS pagos_pendientes
+        COUNT(DISTINCT cs.id)                                          AS total_servicios,
+        COUNT(DISTINCT CASE WHEN p.estado = 'pendiente' THEN p.id END) AS pagos_pendientes,
+        u.email                                                        AS user_email,
+        CASE WHEN c.user_id IS NOT NULL THEN 1 ELSE 0 END             AS tiene_acceso
       FROM clientes c
       LEFT JOIN cliente_servicios cs ON cs.cliente_id = c.id
       LEFT JOIN pagos p ON p.cliente_id = c.id
+      LEFT JOIN users u ON u.id = c.user_id
       GROUP BY c.id
       ORDER BY c.created_at DESC
     `).all();
@@ -56,22 +60,44 @@ const obtenerCliente = (req, res) => {
   }
 };
 
-// ── POST /clientes - CREA UN NUEVO CLIENTE ──
-const crearCliente = (req, res) => {
+// ── POST /clientes - CREA UN NUEVO CLIENTE (con opción de crear acceso al portal) ──
+const crearCliente = async (req, res) => {
   try {
-    const { razon_social, cuit, direccion, email, telefono } = req.body;
+    const { razon_social, cuit, direccion, email, telefono, crear_acceso, user_email, user_password } = req.body;
     const foto_perfil = req.file ? `/uploads/clientes/${req.file.filename}` : null;
 
     // 1 - VALIDO EL CAMPO REQUERIDO (Razón Social):
     if (!razon_social) return res.status(400).json({ error: 'La Razón Social es requerida' });
 
-    // 2 - INSERTO EL CLIENTE EN LA DB:
-    const resultado = db.prepare(`
-      INSERT INTO clientes (razon_social, cuit, direccion, email, telefono, foto_perfil)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(razon_social, cuit || null, direccion || null, email || null, telefono || null, foto_perfil);
+    let user_id = null;
 
-    // 3 - DEVUELVO EL CLIENTE RECIÉN CREADO:
+    // 2 - SI SE SOLICITA CREAR ACCESO AL PORTAL, CREO EL USUARIO:
+    if (crear_acceso === 'true' || crear_acceso === true) {
+
+      // 2a - VALIDO LOS CAMPOS DE ACCESO:
+      if (!user_email || !user_password) {
+        return res.status(400).json({ error: 'Email y contraseña de acceso son requeridos' });
+      }
+
+      // 2b - VERIFICO QUE EL EMAIL NO ESTÉ EN USO:
+      const emailExiste = db.prepare(`SELECT id FROM users WHERE email = ?`).get(user_email);
+      if (emailExiste) return res.status(409).json({ error: 'El email de acceso ya está registrado' });
+
+      // 2c - HASHEO LA CONTRASEÑA Y CREO EL USUARIO:
+      const hashedPassword = await bcrypt.hash(user_password, 10);
+      const userResult = db.prepare(
+        `INSERT INTO users (email, password, role) VALUES (?, ?, 'client')`
+      ).run(user_email, hashedPassword);
+      user_id = userResult.lastInsertRowid;
+    }
+
+    // 3 - INSERTO EL CLIENTE EN LA DB (con o sin user_id):
+    const resultado = db.prepare(`
+      INSERT INTO clientes (razon_social, cuit, direccion, email, telefono, foto_perfil, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(razon_social, cuit || null, direccion || null, email || null, telefono || null, foto_perfil, user_id);
+
+    // 4 - DEVUELVO EL CLIENTE RECIÉN CREADO:
     const nuevoCliente = db.prepare(`SELECT * FROM clientes WHERE id = ?`).get(resultado.lastInsertRowid);
     res.status(201).json(nuevoCliente);
   } catch (error) {
@@ -79,24 +105,52 @@ const crearCliente = (req, res) => {
   }
 };
 
-// ── PUT /clientes/:id - ACTUALIZA UN CLIENTE ──
-const actualizarCliente = (req, res) => {
+// ── PUT /clientes/:id - ACTUALIZA UN CLIENTE (con opción de crear/actualizar acceso) ──
+const actualizarCliente = async (req, res) => {
   try {
     const { id } = req.params;
-    const { razon_social, cuit, direccion, email, telefono } = req.body;
+    const { razon_social, cuit, direccion, email, telefono, crear_acceso, user_email, user_password } = req.body;
     let foto_perfil = req.file ? `/uploads/clientes/${req.file.filename}` : undefined;
 
     // 1 - VERIFICO QUE EL CLIENTE EXISTE:
     const clienteExistente = db.prepare(`SELECT * FROM clientes WHERE id = ?`).get(id);
     if (!clienteExistente) return res.status(404).json({ error: 'Cliente no encontrado' });
 
-    // 1b - SI SE SUBE UNA NUEVA FOTO, BORRO LA ANTERIOR (opcional):
+    // 1b - SI SE SUBE UNA NUEVA FOTO, BORRO LA ANTERIOR:
     if (foto_perfil && clienteExistente.foto_perfil) {
       const rutaAnterior = path.join(__dirname, '..', clienteExistente.foto_perfil);
       if (fs.existsSync(rutaAnterior)) fs.unlinkSync(rutaAnterior);
     }
 
-    // 2 - ACTUALIZO LOS DATOS DEL CLIENTE:
+    // 2 - MANEJO DEL ACCESO AL PORTAL:
+    let user_id = clienteExistente.user_id; // preservo el user_id actual por defecto
+
+    if (crear_acceso === 'true' || crear_acceso === true) {
+
+      // 2a - VALIDO LOS CAMPOS DE ACCESO:
+      if (!user_email || !user_password) {
+        return res.status(400).json({ error: 'Email y contraseña de acceso son requeridos' });
+      }
+
+      // 2b - VERIFICO QUE EL EMAIL NO ESTÉ EN USO POR OTRO USUARIO:
+      const emailExiste = db.prepare(`SELECT id FROM users WHERE email = ? AND id != ?`).get(user_email, user_id || 0);
+      if (emailExiste) return res.status(409).json({ error: 'El email de acceso ya está registrado' });
+
+      const hashedPassword = await bcrypt.hash(user_password, 10);
+
+      if (user_id) {
+        // 2c - YA TIENE USUARIO: ACTUALIZO EMAIL Y CONTRASEÑA:
+        db.prepare(`UPDATE users SET email = ?, password = ? WHERE id = ?`).run(user_email, hashedPassword, user_id);
+      } else {
+        // 2d - NO TIENE USUARIO: CREO UNO NUEVO Y LO VINCULO:
+        const userResult = db.prepare(
+          `INSERT INTO users (email, password, role) VALUES (?, ?, 'client')`
+        ).run(user_email, hashedPassword);
+        user_id = userResult.lastInsertRowid;
+      }
+    }
+
+    // 3 - ACTUALIZO LOS DATOS DEL CLIENTE:
     db.prepare(`
       UPDATE clientes
       SET razon_social = COALESCE(?, razon_social),
@@ -104,11 +158,18 @@ const actualizarCliente = (req, res) => {
           direccion    = COALESCE(?, direccion),
           email        = COALESCE(?, email),
           telefono     = COALESCE(?, telefono),
-          foto_perfil  = COALESCE(?, foto_perfil)
+          foto_perfil  = COALESCE(?, foto_perfil),
+          user_id      = ?
       WHERE id = ?
-    `).run(razon_social || null, cuit || null, direccion || null, email || null, telefono || null, foto_perfil !== undefined ? foto_perfil : null, id);
+    `).run(
+      razon_social || null, cuit || null, direccion || null,
+      email || null, telefono || null,
+      foto_perfil !== undefined ? foto_perfil : null,
+      user_id,
+      id
+    );
 
-    // 3 - DEVUELVO EL CLIENTE ACTUALIZADO:
+    // 4 - DEVUELVO EL CLIENTE ACTUALIZADO:
     const clienteActualizado = db.prepare(`SELECT * FROM clientes WHERE id = ?`).get(id);
     res.json(clienteActualizado);
   } catch (error) {

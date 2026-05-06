@@ -215,5 +215,22 @@ try {
 }
 
 // 11 - EXPORTO LA CONEXIÓN PARA USARLA EN TODA LA APP:
+// (antes del module.exports, agrego la tabla de notificaciones)
+
+// 12 - CREO LA TABLA DE NOTIFICACIONES:
+db.exec(`
+  CREATE TABLE IF NOT EXISTS notificaciones (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo         TEXT    NOT NULL, -- 'comprobante_subido' | 'pago_confirmado'
+    factura_id   INTEGER NOT NULL,
+    para_user_id INTEGER NOT NULL,
+    leida        INTEGER NOT NULL DEFAULT 0,
+    mensaje      TEXT    NOT NULL,
+    created_at   TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (factura_id)   REFERENCES facturas(id) ON DELETE CASCADE,
+    FOREIGN KEY (para_user_id) REFERENCES users(id)    ON DELETE CASCADE
+  );
+`);
+
 module.exports = db;
 

@@ -8,13 +8,14 @@ const cors    = require('cors');
 const path = require('path');
 
 // 2 - IMPORTO LAS RUTAS:
-const rutasServicios      = require('./routes/servicios');
-const rutasClientes       = require('./routes/clientes');
-const rutasFactura        = require('./routes/factura');
-const rutasAuth           = require('./routes/authRoutes');
-const rutasClientsPortal  = require('./routes/clientsPortalRoutes');
-const rutasFacturasPortal = require('./routes/facturasPortalRoutes');
-const rutasConfiguracion  = require('./routes/configuracion');
+const rutasServicios        = require('./routes/servicios');
+const rutasClientes         = require('./routes/clientes');
+const rutasFactura          = require('./routes/factura');
+const rutasAuth             = require('./routes/authRoutes');
+const rutasClientsPortal    = require('./routes/clientsPortalRoutes');
+const rutasFacturasPortal   = require('./routes/facturasPortalRoutes');
+const rutasConfiguracion    = require('./routes/configuracion');
+const rutasNotificaciones   = require('./routes/notificacionesRoutes');
 
 // 3 - IMPORTO EL SERVICIO DE FACTURA (para generar cobros al iniciar):
 const { generarTodosPagosPendientes, migrarPagosAFacturas } = require('./services/facturaService');
@@ -38,6 +39,7 @@ app.use('/auth',            rutasAuth);
 app.use('/portal/clients',  rutasClientsPortal);
 app.use('/facturas-portal', rutasFacturasPortal);
 app.use('/configuracion',   rutasConfiguracion);
+app.use('/notificaciones',  rutasNotificaciones);
 
 // 7 - RUTA RAÍZ PARA VERIFICAR QUE EL SERVER ESTÁ VIVO:
 app.get('/', (req, res) => {

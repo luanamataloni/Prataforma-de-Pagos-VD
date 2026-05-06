@@ -1204,3 +1204,34 @@ p  { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6; }
   /* 8 - SALTO DE PÁGINA ANTES DEL SEPARADOR DE CLIENTE: */
   .client-separator { page-break-before: auto; }
 }
+
+/* ============================================================
+   TARJETAS DE FACTURAS - RESPONSIVE (Desktop / Mobile)
+   ============================================================ */
+
+/* EN DESKTOP: muestro la versión horizontal y oculto la móvil */
+.factura-card-desktop {
+  display: flex;
+  align-items: center;
+  padding: 14px 22px;
+  cursor: pointer;
+  gap: 0;
+}
+.factura-card-mobile  { display: none; }
+
+/* ENCABEZADO DE COLUMNAS: visible solo en desktop */
+.factura-header-desktop { display: flex; }
+
+/* EN MÓVIL: oculto la versión desktop y muestro la móvil */
+@media (max-width: 640px) {
+  .factura-card-desktop   { display: none; }
+  .factura-card-mobile    {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+  .factura-header-desktop { display: none; }
+}
+

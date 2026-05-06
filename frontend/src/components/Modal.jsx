@@ -22,7 +22,8 @@ export default function Modal({ isOpen, onClose, title, children }) {
   // 5 - RENDERIZO EL MODAL:
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content">
+      {/* DETENGO LA PROPAGACIÓN EN EL CONTENIDO: evita que clics dentro (inputs, autofill, etc) cierren el modal */}
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         {/* INDICADOR DE ARRASTRE */}
         <div className="modal-handle"></div>
 

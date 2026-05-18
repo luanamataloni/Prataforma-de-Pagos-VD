@@ -90,7 +90,7 @@ function generarHTMLMail({ cliente, factura, detalle, config, periodoLabel, nroF
                 <tr>
                   <td>
                     <div style="color:#fff; font-size:1.5rem; font-weight:800; letter-spacing:-0.02em;">
-                      💜 ${nombreProveedor}
+                       ${nombreProveedor}
                     </div>
                     <div style="color:rgba(255,255,255,0.8); font-size:0.85rem; margin-top:4px;">
                       Nueva factura emitida
@@ -297,7 +297,7 @@ async function enviarMailNuevaFactura({ cliente, factura, detalle, config }) {
     const info = await transporter.sendMail({
       from:    `"${fromName}" <${fromAddress}>`,
       to:      cliente.email,
-      subject: `💜 Nueva factura ${periodoLabel} - ${config.razon_social || 'Portal de Pagos'}`,
+      subject: `Nueva factura ${periodoLabel} - ${config.razon_social || 'Portal de Pagos'}`,
       html:    htmlMail,
     });
 
@@ -339,8 +339,14 @@ async function enviarMailFacturaManual({ cliente, factura, detalle, config }) {
     const cbu           = process.env.PAGO_CBU   || '(consultar al administrador)';
     const portalUrl     = process.env.PORTAL_URL  || 'el portal';
 
-    // 6d - GENERO LA LISTA DE SERVICIOS EN TEXTO PLANO (bullets):
-    const listaServicios = detalle.map(item => `• ${item.descripcion}`).join('\n');
+    // 6d - PRE-GENERO EL HTML DE CADA SERVICIO (evita template literals anidadas):
+    const filasServiciosManual = detalle.map(function(item) {
+      return '<div style="display:flex; justify-content:space-between; align-items:center;' +
+             'padding:5px 0; font-size:0.88rem; color:#374151;">' +
+             '<span>• ' + item.descripcion + '</span>' +
+             '<span style="font-weight:700; color:#7C3AED;">' + fmt(item.importe * item.cantidad) + '</span>' +
+             '</div>';
+    }).join('');
 
     // 6e - GENERO EL CUERPO HTML DEL MAIL CON EL FORMATO SOLICITADO:
     const htmlMail = `
@@ -349,7 +355,7 @@ async function enviarMailFacturaManual({ cliente, factura, detalle, config }) {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Factura ${periodoLabel}</title>
+  <title>Factura $ {periodoLabel}</title>
 </head>
 <body style="margin:0; padding:0; background:#F4F4F8; font-family:'Segoe UI', Arial, sans-serif;">
 
@@ -367,7 +373,7 @@ async function enviarMailFacturaManual({ cliente, factura, detalle, config }) {
                 <tr>
                   <td>
                     <div style="color:#fff; font-size:1.4rem; font-weight:800;">
-                      💜 ${nombreEmpresa}
+                       ${nombreEmpresa}
                     </div>
                     <div style="color:rgba(255,255,255,0.75); font-size:0.82rem; margin-top:4px;">
                       Comprobante de facturación · Factura N° ${nroFactura}
@@ -403,13 +409,7 @@ async function enviarMailFacturaManual({ cliente, factura, detalle, config }) {
               <!-- LISTA DE SERVICIOS -->
               <div style="background:#F4F4F8; border-left:3px solid #7C3AED;
                           border-radius:0 8px 8px 0; padding:14px 20px; margin:0 0 24px;">
-                ${detalle.map(item => `
-                  <div style="display:flex; justify-content:space-between; align-items:center;
-                              padding:5px 0; font-size:0.88rem; color:#374151;">
-                    <span>• ${item.descripcion}</span>
-                    <span style="font-weight:700; color:#7C3AED;">${fmt(item.importe * item.cantidad)}</span>
-                  </div>
-                `).join('')}
+                ${filasServiciosManual}
                 <div style="border-top:1px solid #E5E7EB; margin-top:10px; padding-top:10px;
                             display:flex; justify-content:space-between; font-weight:800; font-size:1rem; color:#1A1A2E;">
                   <span>Total</span>

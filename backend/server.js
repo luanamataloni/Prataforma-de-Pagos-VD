@@ -2,6 +2,9 @@
 // SERVIDOR PRINCIPAL - EXPRESS
 // ============================================================
 
+// 0 - CARGO LAS VARIABLES DE ENTORNO DESDE .env (debe ir PRIMERO):
+require('dotenv').config();
+
 // 1 - IMPORTO LAS DEPENDENCIAS:
 const express = require('express');
 const cors    = require('cors');

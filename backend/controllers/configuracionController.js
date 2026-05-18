@@ -27,7 +27,7 @@ const getConfiguracion = (req, res) => {
 const updateConfiguracion = (req, res) => {
   try {
 
-    const { razon_social, rubro, cuit, direccion, telefono } = req.body;
+    const { razon_social, rubro, cuit, direccion, telefono, mail_envio } = req.body;
 
     // 1 - PREPARO LA QUERY DE UPSERT:
     const upsert = db.prepare(`
@@ -36,8 +36,8 @@ const updateConfiguracion = (req, res) => {
       ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor
     `);
 
-    // 2 - ACTUALIZO CADA CAMPO UNO POR UNO:
-    const campos = { razon_social, rubro, cuit, direccion, telefono };
+    // 2 - ACTUALIZO CADA CAMPO UNO POR UNO (incluido mail_envio):
+    const campos = { razon_social, rubro, cuit, direccion, telefono, mail_envio };
     Object.entries(campos).forEach(([clave, valor]) => {
       if (valor !== undefined) upsert.run(clave, valor);
     });

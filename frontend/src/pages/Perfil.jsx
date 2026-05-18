@@ -4,7 +4,7 @@
 
 // 1 - IMPORTO REACT Y LOS ÍCONOS:
 import { useState, useEffect } from 'react';
-import { Building2, Save, CheckCircle } from 'lucide-react';
+import { Building2, Save, CheckCircle, Mail } from 'lucide-react';
 
 // 2 - HELPER: REQUEST AUTENTICADO AL BACKEND:
 const BASE = '/api';
@@ -29,7 +29,8 @@ const FORM_VACIO = {
   rubro:        '',
   cuit:         '',
   direccion:    '',
-  telefono:     ''
+  telefono:     '',
+  mail_envio:   ''
 };
 
 export default function Perfil() {
@@ -53,7 +54,8 @@ export default function Perfil() {
         rubro:        config.rubro        || '',
         cuit:         config.cuit         || '',
         direccion:    config.direccion     || '',
-        telefono:     config.telefono      || ''
+        telefono:     config.telefono      || '',
+        mail_envio:   config.mail_envio    || ''
       });
     } catch (err) {
       console.error('Error al cargar configuración:', err);
@@ -177,6 +179,47 @@ export default function Perfil() {
               value={form.telefono}
               onChange={e => setForm({ ...form, telefono: e.target.value })}
             />
+          </div>
+
+          {/* SEPARADOR VISUAL */}
+          <div style={{
+            borderTop: '1.5px dashed var(--border-color)',
+            margin: '20px 0 20px',
+          }} />
+
+          {/* SECCIÓN: CONFIGURACIÓN DE MAIL */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <div style={{
+              width: 36, height: 36,
+              background: 'var(--color-primary-light)',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Mail size={18} color="var(--color-primary)" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                Correo de envío
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                Desde este mail salen los recordatorios y facturas a los clientes
+              </div>
+            </div>
+          </div>
+
+          {/* CAMPO: MAIL DE ENVÍO */}
+          <div className="form-group">
+            <label>Mail de envío de recordatorios *</label>
+            <input
+              type="email"
+              placeholder="Ej: pagos@miempresa.com"
+              value={form.mail_envio}
+              onChange={e => setForm({ ...form, mail_envio: e.target.value })}
+            />
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 4, display: 'block' }}>
+              ⚠️ Este mail debe coincidir con el <code>SMTP_USER</code> configurado en el servidor para que el envío funcione correctamente.
+            </span>
           </div>
 
           {/* BOTÓN GUARDAR + MENSAJE DE ÉXITO */}

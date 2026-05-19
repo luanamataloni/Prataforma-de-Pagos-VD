@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 
 // 2 - IMPORTO LOS ÍCONOS:
-import { Plus, Users, Pencil, Trash2, ChevronDown, ChevronUp, Package, X, Camera, ShieldCheck, ShieldOff, KeyRound } from 'lucide-react';
+import { Plus, Users, Pencil, Trash2, ChevronDown, ChevronUp, Package, X, Camera, ShieldCheck, ShieldOff, KeyRound, Eye, EyeOff } from 'lucide-react';
 
 // 3 - IMPORTO EL MODAL Y LA API:
 import Modal from '../components/Modal';
@@ -28,6 +28,8 @@ const FORM_VACIO = {
   user_password: ''
 };
 
+const PASSWORD_MANTENIDA = '********';
+
 export default function Clientes() {
 
   // 5 - DEFINO EL ESTADO LOCAL:
@@ -44,6 +46,7 @@ export default function Clientes() {
   const [guardando,      setGuardando]      = useState(false);
   const [serviciosTodos, setServiciosTodos] = useState([]);
   const [detalleCliente, setDetalleCliente] = useState(null);
+  const [mostrarPassword, setMostrarPassword] = useState(false);
 
   // 6 - CARGO LOS CLIENTES AL MONTAR:
   useEffect(() => { cargarClientes(); }, []);
@@ -83,6 +86,7 @@ export default function Clientes() {
     setForm(FORM_VACIO);
     setFotoFile(null);
     setPreview(null);
+    setMostrarPassword(false);
     setModalAbierto(true);
   }
 
@@ -98,10 +102,11 @@ export default function Clientes() {
       // SI YA TIENE ACCESO AL PORTAL, MUESTRO LA SECCIÓN PRE-COMPLETADA:
       crear_acceso:  !!cliente.tiene_acceso,
       user_email:    cliente.user_email    || '',
-      user_password: ''  // NUNCA pre-relleno la contraseña por seguridad
+      user_password: cliente.tiene_acceso ? PASSWORD_MANTENIDA : ''
     });
     setFotoFile(null);
     setPreview(cliente.foto_perfil ? `http://localhost:3001${cliente.foto_perfil}` : null);
+    setMostrarPassword(false);
     setModalAbierto(true);
   }
 
@@ -279,11 +284,6 @@ export default function Clientes() {
                   </h3>
                   <p style={{ margin: 0, marginTop: 2 }}>
                     {c.total_servicios} servicio{c.total_servicios !== 1 ? 's' : ''}
-                    {c.pagos_pendientes > 0 && (
-                      <span className="badge badge-pendiente" style={{ marginLeft: 8 }}>
-                        {c.pagos_pendientes} pendiente{c.pagos_pendientes !== 1 ? 's' : ''}
-                      </span>
-                    )}
                   </p>
                 </div>
 
@@ -493,15 +493,37 @@ export default function Clientes() {
                 {/* CONTRASEÑA */}
                 <div className="form-group" style={{ margin: 0 }}>
                   <label style={{ fontSize: '0.78rem' }}>
-                    {editando?.tiene_acceso ? 'Nueva contraseña (dejá vacío para no cambiarla)' : 'Contraseña *'}
+                    {editando?.tiene_acceso ? 'Contraseña (dejá vacío para mantener la actual)' : 'Contraseña *'}
                   </label>
-                  <input
-                    name="user_password"
-                    type="password"
-                    value={form.user_password}
-                    onChange={handleChange}
-                    placeholder="Mínimo 6 caracteres"
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      name="user_password"
+                      type={mostrarPassword ? 'text' : 'password'}
+                      value={form.user_password}
+                      onChange={handleChange}
+                      placeholder={editando?.tiene_acceso ? PASSWORD_MANTENIDA : 'Mínimo 6 caracteres'}
+                      style={{ paddingRight: 44 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMostrarPassword(v => !v)}
+                      title={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                      aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        border: 'none',
+                        background: 'transparent',
+                        padding: 4,
+                        cursor: 'pointer',
+                        color: '#6B7280'
+                      }}
+                    >
+                      {mostrarPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

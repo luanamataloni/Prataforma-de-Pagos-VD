@@ -5,8 +5,12 @@
 // 1 - CARGO LAS VARIABLES DE ENTORNO DESDE .env:
 require('dotenv').config();
 
-// 2 - IMPORTO NODEMAILER:
+// 2 - IMPORTO NODEMAILER Y PUPPETEER:
 const nodemailer = require('nodemailer');
+const puppeteer  = require('puppeteer');
+
+// 2b - IMPORTO EL GENERADOR DE HTML COMPARTIDO (mismo que muestra el portal web):
+const { generarHTMLFacturaString } = require('./facturaHtmlService');
 
 // ── HELPER: FORMATEA MONTO EN PESOS ARGENTINOS ──
 function fmt(n) {
@@ -24,6 +28,46 @@ function fmtPeriodo(p) {
                  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const [anio, mes] = p.split('-');
   return mes ? `${meses[parseInt(mes)]} ${anio}` : anio;
+}
+
+// ── HELPER: GENERA EL PDF DE LA FACTURA USANDO EL MISMO HTML DEL PORTAL ──
+// Usa puppeteer para renderizar el HTML idéntico al que ve el cliente en el portal web.
+// Así el PDF adjunto al mail es 100% igual al que descarga desde la web.
+async function crearPdfFacturaBuffer({ cliente, factura, detalle, config }) {
+
+  // 1 - ARMO EL OBJETO factura CON LOS DATOS DEL CLIENTE (campos que espera el HTML):
+  const facturaConCliente = {
+    ...factura,
+    razon_social:        cliente.razon_social  || '',
+    client_nombre:       cliente.razon_social  || '',
+    cliente_cuit:        cliente.cuit          || '',
+    cliente_email:       cliente.email         || '',
+    cliente_direccion:   cliente.direccion     || '',
+  };
+
+  // 2 - GENERO EL HTML CON EL SERVICIO COMPARTIDO (el mismo que muestra el portal):
+  const html = generarHTMLFacturaString({ factura: facturaConCliente, detalle, config });
+
+  // 3 - ABRO UN NAVEGADOR HEADLESS CON PUPPETEER:
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+
+  // 4 - ABRO UNA PÁGINA Y CARGO EL HTML:
+  const page = await browser.newPage();
+  await page.setContent(html, { waitUntil: 'networkidle0' });
+
+  // 5 - GENERO EL PDF EN MEMORIA (formato A4, sin márgenes extra):
+  const pdfBuffer = await page.pdf({
+    format: 'A4',
+    printBackground: true,
+    margin: { top: '0', right: '0', bottom: '0', left: '0' }
+  });
+
+  // 6 - CIERRO EL NAVEGADOR Y DEVUELVO EL PDF:
+  await browser.close();
+  return pdfBuffer;
 }
 
 // 3 - CREO EL TRANSPORTER DE NODEMAILER CON LA CONFIG DEL .env:
@@ -239,6 +283,9 @@ function generarHTMLMail({ cliente, factura, detalle, config, periodoLabel, nroF
                   3. Adjuntá el comprobante de pago y envialo.<br/>
                   4. El administrador confirmará tu pago.
                 </p>
+                <p style="margin:10px 0 0; font-size:0.82rem; color:#6B7280; line-height:1.6;">
+                  También te adjuntamos una copia en PDF para que puedas descargarla directamente desde este correo.
+                </p>
               </div>
             </td>
           </tr>
@@ -289,6 +336,9 @@ async function enviarMailNuevaFactura({ cliente, factura, detalle, config }) {
     // 5d - GENERO EL CUERPO HTML DEL MAIL:
     const htmlMail = generarHTMLMail({ cliente, factura, detalle, config, periodoLabel, nroFactura });
 
+    // 5d-1 - GENERO EL PDF PARA ADJUNTARLO AL CORREO:
+    const pdfBuffer = await crearPdfFacturaBuffer({ cliente, factura, detalle, config });
+
     // 5e - CREO EL TRANSPORTER Y ENVÍO EL MAIL:
     // Usa mail_envio de la DB si está configurado, sino cae al .env:
     const fromAddress = config.mail_envio || process.env.MAIL_FROM_ADDRESS || process.env.SMTP_USER;
@@ -299,6 +349,11 @@ async function enviarMailNuevaFactura({ cliente, factura, detalle, config }) {
       to:      cliente.email,
       subject: `Nueva factura ${periodoLabel} - ${config.razon_social || 'Portal de Pagos'}`,
       html:    htmlMail,
+      attachments: [{
+        filename: `factura_${nroFactura}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }],
     });
 
     console.log(`[EMAIL] ✅ Mail enviado a ${cliente.email} (factura #${nroFactura}) - ID: ${info.messageId}`);
@@ -341,10 +396,10 @@ async function enviarMailFacturaManual({ cliente, factura, detalle, config }) {
 
     // 6d - PRE-GENERO EL HTML DE CADA SERVICIO (evita template literals anidadas):
     const filasServiciosManual = detalle.map(function(item) {
-      return '<div style="display:flex; justify-content:space-between; align-items:center;' +
+      return '<div style="display:flex; justify-content:space-between; align-items:center; gap:16px;' +
              'padding:5px 0; font-size:0.88rem; color:#374151;">' +
-             '<span>• ' + item.descripcion + '</span>' +
-             '<span style="font-weight:700; color:#7C3AED;">' + fmt(item.importe * item.cantidad) + '</span>' +
+             '<span style="flex:1; padding-right:12px;">• ' + item.descripcion + '</span>' +
+             '<span style="font-weight:700; color:#7C3AED; white-space:nowrap;">' + fmt(item.importe * item.cantidad) + '</span>' +
              '</div>';
     }).join('');
 
@@ -355,7 +410,7 @@ async function enviarMailFacturaManual({ cliente, factura, detalle, config }) {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Factura $ {periodoLabel}</title>
+  <title>Factura ${periodoLabel}</title>
 </head>
 <body style="margin:0; padding:0; background:#F4F4F8; font-family:'Segoe UI', Arial, sans-serif;">
 
@@ -411,9 +466,10 @@ async function enviarMailFacturaManual({ cliente, factura, detalle, config }) {
                           border-radius:0 8px 8px 0; padding:14px 20px; margin:0 0 24px;">
                 ${filasServiciosManual}
                 <div style="border-top:1px solid #E5E7EB; margin-top:10px; padding-top:10px;
-                            display:flex; justify-content:space-between; font-weight:800; font-size:1rem; color:#1A1A2E;">
-                  <span>Total</span>
-                  <span style="color:#7C3AED;">${fmt(factura.total)}</span>
+                            display:flex; justify-content:space-between; align-items:center; gap:16px;
+                            font-weight:800; font-size:1rem; color:#1A1A2E;">
+                  <span style="padding-right:12px;">Total</span>
+                  <span style="color:#7C3AED; white-space:nowrap;">${fmt(factura.total)}</span>
                 </div>
               </div>
 
@@ -447,6 +503,9 @@ async function enviarMailFacturaManual({ cliente, factura, detalle, config }) {
               <p style="margin:0 0 6px; font-size:0.88rem; color:#6B7280; line-height:1.7;">
                 Ante cualquier duda o consulta, quedamos a disposición.
               </p>
+              <p style="margin:0 0 8px; font-size:0.88rem; color:#6B7280; line-height:1.7;">
+                También te adjuntamos esta factura en formato PDF para que puedas descargarla directamente desde este correo.
+              </p>
               <p style="margin:0; font-size:0.88rem; color:#1A1A2E; font-weight:600;">
                 Saludos cordiales,<br/>
                 <span style="color:#7C3AED;">${nombreEmpresa}</span>
@@ -479,12 +538,18 @@ async function enviarMailFacturaManual({ cliente, factura, detalle, config }) {
     // Usa mail_envio de la DB si está configurado, sino cae al .env:
     const fromAddress = config.mail_envio || process.env.MAIL_FROM_ADDRESS || process.env.SMTP_USER;
     const fromName    = process.env.MAIL_FROM_NAME || nombreEmpresa;
+    const pdfBuffer   = await crearPdfFacturaBuffer({ cliente, factura, detalle, config });
     const transporter = crearTransporter();
     const info = await transporter.sendMail({
       from:    `"${fromName}" <${fromAddress}>`,
       to:      cliente.email,
-      subject: `💜 Nueva factura ${periodoLabel} - Factura N° ${nroFactura}`,
+      subject: `Nueva factura ${periodoLabel} - Factura N° ${nroFactura}`,
       html:    htmlMail,
+      attachments: [{
+        filename: `factura_${nroFactura}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }],
     });
 
     console.log(`[EMAIL] ✅ Mail manual enviado a ${cliente.email} (factura #${nroFactura}) - ID: ${info.messageId}`);
@@ -498,7 +563,7 @@ async function enviarMailFacturaManual({ cliente, factura, detalle, config }) {
 }
 
 // 7 - EXPORTO LAS FUNCIONES:
-module.exports = { enviarMailNuevaFactura, enviarMailFacturaManual };
+module.exports = { enviarMailNuevaFactura, enviarMailFacturaManual, crearPdfFacturaBuffer };
 
 
 

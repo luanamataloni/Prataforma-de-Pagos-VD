@@ -10,6 +10,8 @@ const path  = require('path');
 const fs    = require('fs');
 const bcrypt = require('bcryptjs');
 
+const PASSWORD_MANTENIDA = '********';
+
 // ── GET /clientes - LISTA TODOS LOS CLIENTES ──
 const listarClientes = (req, res) => {
   try {
@@ -124,11 +126,17 @@ const actualizarCliente = async (req, res) => {
 
     // 2 - MANEJO DEL ACCESO AL PORTAL:
     let user_id = clienteExistente.user_id; // preservo el user_id actual por defecto
+    const passwordNueva = typeof user_password === 'string' ? user_password.trim() : '';
+    const passwordDebeMantenerse = !passwordNueva || passwordNueva === PASSWORD_MANTENIDA;
 
     if (crear_acceso === 'true' || crear_acceso === true) {
 
       // 2a - VALIDO LOS CAMPOS DE ACCESO:
-      if (!user_email || !user_password) {
+      if (!user_email) {
+        return res.status(400).json({ error: 'Email de acceso es requerido' });
+      }
+
+      if (!user_id && passwordDebeMantenerse) {
         return res.status(400).json({ error: 'Email y contraseña de acceso son requeridos' });
       }
 
@@ -136,13 +144,20 @@ const actualizarCliente = async (req, res) => {
       const emailExiste = db.prepare(`SELECT id FROM users WHERE email = ? AND id != ?`).get(user_email, user_id || 0);
       if (emailExiste) return res.status(409).json({ error: 'El email de acceso ya está registrado' });
 
-      const hashedPassword = await bcrypt.hash(user_password, 10);
-
       if (user_id) {
-        // 2c - YA TIENE USUARIO: ACTUALIZO EMAIL Y CONTRASEÑA:
-        db.prepare(`UPDATE users SET email = ?, password = ? WHERE id = ?`).run(user_email, hashedPassword, user_id);
+        // 2c - YA TIENE USUARIO: ACTUALIZO EMAIL Y SOLO CAMBIO LA CONTRASEÑA SI VIENE UNA NUEVA:
+        if (!passwordDebeMantenerse) {
+          const hashedPassword = await bcrypt.hash(passwordNueva, 10);
+          db.prepare(`UPDATE users SET email = ?, password = ? WHERE id = ?`).run(user_email, hashedPassword, user_id);
+        } else {
+          db.prepare(`UPDATE users SET email = ? WHERE id = ?`).run(user_email, user_id);
+        }
       } else {
         // 2d - NO TIENE USUARIO: CREO UNO NUEVO Y LO VINCULO:
+        if (passwordDebeMantenerse) {
+          return res.status(400).json({ error: 'Contraseña de acceso es requerida para crear el acceso al portal' });
+        }
+        const hashedPassword = await bcrypt.hash(passwordNueva, 10);
         const userResult = db.prepare(
           `INSERT INTO users (email, password, role) VALUES (?, ?, 'client')`
         ).run(user_email, hashedPassword);

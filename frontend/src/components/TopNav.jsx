@@ -5,7 +5,7 @@
 // 1 - IMPORTO REACT, REACT ROUTER, ÍCONOS, CONTEXTO Y MODAL:
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Package, CreditCard, Wallet, LogOut, Settings, UserPlus, ChevronDown, Bell, CheckCheck, FileText, Eye, CheckCircle, X } from 'lucide-react';
+import { LayoutDashboard, Users, Package, CreditCard, Wallet, LogOut, Settings, UserPlus, ChevronDown, Bell, CheckCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Modal from './Modal';
 
@@ -45,17 +45,12 @@ export default function TopNav() {
   const navItems          = user?.role === 'admin' ? ADMIN_NAV : CLIENT_NAV;
 
   // 5 - ESTADOS:
-  const [dropdownOpen,    setDropdownOpen]    = useState(false);
-  const [modalUser,       setModalUser]       = useState(false);
-  const [formUser,        setFormUser]        = useState({ nombre: '', email: '', password: '' });
-  const [guardando,       setGuardando]       = useState(false);
-  const [notifOpen,       setNotifOpen]       = useState(false);
-  const [notificaciones,  setNotificaciones]  = useState([]);
-  // ESTADO PARA EL MODAL DE DETALLE DE NOTIFICACIÓN:
-  const [notifDetalle,    setNotifDetalle]    = useState(null);   // notificación seleccionada
-  const [facturaDetalle,  setFacturaDetalle]  = useState(null);   // datos completos de la factura
-  const [cargandoDetalle, setCargandoDetalle] = useState(false);  // loading del modal
-  const [confirmando,     setConfirmando]     = useState(false);  // loading del btn confirmar
+  const [dropdownOpen,   setDropdownOpen]   = useState(false);
+  const [modalUser,      setModalUser]      = useState(false);
+  const [formUser,       setFormUser]       = useState({ nombre: '', email: '', password: '' });
+  const [guardando,      setGuardando]      = useState(false);
+  const [notifOpen,      setNotifOpen]      = useState(false);
+  const [notificaciones, setNotificaciones] = useState([]);
   const dropdownRef = useRef(null);
   const notifRef    = useRef(null);
 
@@ -123,77 +118,19 @@ export default function TopNav() {
   // 6f - CUENTO LAS NO LEÍDAS:
   const noLeidas = notificaciones.filter(n => !n.leida).length;
 
-  // 6g - ABRO EL MODAL DE DETALLE CUANDO EL ADMIN HACE CLIC EN UNA NOTIFICACIÓN DE COMPROBANTE:
-  async function handleClickNotif(n) {
-    // Si es solo informativa (pago_confirmado u otra), la marco como leída y salgo:
-    if (n.tipo !== 'comprobante_subido') {
-      marcarUnaLeida(n.id);
-      return;
-    }
+  // 6g - CUANDO EL ADMIN HACE CLIC EN UNA NOTIFICACIÓN → NAVEGO A FACTURAS Y RESALTO LA FACTURA:
+  function handleClickNotif(n) {
+    // 6g-1 - MARCO LA NOTIFICACIÓN COMO LEÍDA:
+    marcarUnaLeida(n.id);
 
-    // Es un comprobante → abro el modal con los detalles de la factura:
-    setNotifDetalle(n);
+    // 6g-2 - CIERRO EL PANEL DE NOTIFICACIONES:
     setNotifOpen(false);
-    setCargandoDetalle(true);
-    setFacturaDetalle(null);
 
-    try {
-      // 6g-1 - TRAIGO LOS DATOS COMPLETOS DE LA FACTURA:
-      const factura = await req(`/facturas-portal/${n.factura_id}`);
-      setFacturaDetalle(factura);
-    } catch (err) {
-      alert('No se pudieron cargar los datos de la factura');
-      setNotifDetalle(null);
-    } finally {
-      setCargandoDetalle(false);
+    // 6g-3 - NAVEGO A LA PÁGINA DE FACTURAS CON EL ID DE LA FACTURA PARA RESALTARLA:
+    if (n.factura_id) {
+      navigate('/facturas-admin', { state: { highlightId: n.factura_id } });
     }
   }
-
-  // 6h - CONFIRMO EL PAGO DESDE EL MODAL DE NOTIFICACIÓN:
-  async function handleConfirmarPago() {
-    if (!facturaDetalle) return;
-    if (!confirm(`¿Confirmar el pago de la factura #${String(facturaDetalle.id).padStart(4,'0')}?`)) return;
-
-    try {
-      setConfirmando(true);
-
-      // 6h-1 - MARCO LA FACTURA COMO PAGADA EN EL BACKEND:
-      await req(`/facturas-portal/${facturaDetalle.id}/pagar`, { method: 'PUT' });
-
-      // 6h-2 - MARCO LA NOTIFICACIÓN COMO LEÍDA:
-      await marcarUnaLeida(notifDetalle.id);
-
-      // 6h-3 - ACTUALIZO EL FACTURADETALLE LOCALMENTE PARA MOSTRAR ESTADO PAGADO:
-      setFacturaDetalle(prev => ({ ...prev, estado: 'pagado' }));
-
-      // 6h-4 - DISPARO UN EVENTO GLOBAL PARA QUE FACTURA.JSX SE RECARGUE:
-      window.dispatchEvent(new CustomEvent('factura-actualizada'));
-
-      // 6h-5 - CIERRO EL MODAL DESPUÉS DE 1.5 SEGUNDOS:
-      setTimeout(() => {
-        setNotifDetalle(null);
-        setFacturaDetalle(null);
-      }, 1500);
-
-    } catch (err) {
-      alert('Error al confirmar el pago: ' + err.message);
-    } finally {
-      setConfirmando(false);
-    }
-  }
-
-  // 6i - FUNCIÓN DE FORMATO DE PERÍODO:
-  function fmtPeriodo(p) {
-    if (!p) return '';
-    const meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    const [anio, mes] = p.split('-');
-    return mes ? `${meses[parseInt(mes)]} ${anio}` : anio;
-  }
-
-  // 6j - FUNCIÓN DE FORMATO DE MONTO:
-  const fmt = (m) =>
-    new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(m);
 
   // 7 - LOGOUT: BORRO TOKEN Y VOY AL LOGIN:
   function handleLogout() { logout(); navigate('/login'); }
@@ -355,10 +292,10 @@ export default function TopNav() {
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: 3, display: 'block' }}>
                             {new Date(n.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          {/* INDICACIÓN CLICKEABLE SOLO PARA comprobante_subido */}
-                          {n.tipo === 'comprobante_subido' && !n.leida && (
+                          {/* INDICACIÓN CLICKEABLE PARA TODAS LAS NOTIFICACIONES NO LEÍDAS */}
+                          {!n.leida && (
                             <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600, marginTop: 2, display: 'block' }}>
-                              👆 Clic para ver y confirmar
+                              👆 Clic para ir a la factura
                             </span>
                           )}
                         </div>
@@ -466,151 +403,6 @@ export default function TopNav() {
 
       </header>
 
-      {/* ── MODAL: DETALLE DE COMPROBANTE DE PAGO ── */}
-      <Modal
-        isOpen={!!notifDetalle}
-        onClose={() => { setNotifDetalle(null); setFacturaDetalle(null); }}
-        title="📎 Comprobante de pago recibido"
-      >
-        {cargandoDetalle ? (
-          /* ESTADO DE CARGA */
-          <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)' }}>
-            <p>Cargando datos de la factura...</p>
-          </div>
-
-        ) : facturaDetalle ? (
-          <>
-            {/* ── ESTADO CONFIRMADO ── */}
-            {facturaDetalle.estado === 'pagado' && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                background: '#F0FDF4', border: '1.5px solid #22C55E',
-                borderRadius: 'var(--radius-lg)', padding: '12px 16px', marginBottom: 16
-              }}>
-                <CheckCircle size={20} color="#22C55E" />
-                <span style={{ fontWeight: 700, color: '#15803D', fontSize: '0.9rem' }}>
-                  ✅ Pago confirmado correctamente
-                </span>
-              </div>
-            )}
-
-            {/* ── DATOS DEL CLIENTE ── */}
-            <div style={{
-              background: 'var(--bg-main)', borderRadius: 'var(--radius-lg)',
-              padding: '16px', marginBottom: 16, border: '1px solid var(--border-color)'
-            }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 10, letterSpacing: '0.06em' }}>
-                Datos del cliente
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {/* FOTO */}
-                <div style={{
-                  width: 48, height: 48, borderRadius: '50%', background: '#EDE9FE',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  overflow: 'hidden', flexShrink: 0
-                }}>
-                  {facturaDetalle.cliente_foto
-                    ? <img src={`http://localhost:3001${facturaDetalle.cliente_foto}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <FileText size={20} color="#7C3AED" />
-                  }
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                    {facturaDetalle.nombre_display || facturaDetalle.razon_social || '—'}
-                  </div>
-                  {facturaDetalle.cliente_email && (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                      {facturaDetalle.cliente_email}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* ── DATOS DE LA FACTURA ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
-              {[
-                { label: 'Factura',  valor: `#${String(facturaDetalle.id).padStart(4, '0')}` },
-                { label: 'Período',  valor: fmtPeriodo(facturaDetalle.periodo) },
-                { label: 'Total',    valor: fmt(facturaDetalle.total) },
-              ].map(({ label, valor }) => (
-                <div key={label} style={{
-                  background: 'var(--bg-main)', borderRadius: 'var(--radius-md)',
-                  padding: '12px', border: '1px solid var(--border-color)', textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 4 }}>{label}</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-primary)' }}>{valor}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* ── COMPROBANTE ADJUNTO ── */}
-            <div style={{
-              background: '#F5F3FF', border: '1.5px solid var(--color-primary)',
-              borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 20
-            }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-primary)', marginBottom: 10, letterSpacing: '0.06em' }}>
-                Comprobante adjunto
-              </div>
-              {facturaDetalle.comprobante ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 'var(--radius-md)',
-                    background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    📄
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {facturaDetalle.comprobante.split('/').pop()}
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                      Subido por el cliente
-                    </div>
-                  </div>
-                  {/* BOTÓN VER COMPROBANTE */}
-                  <button
-                    onClick={() => window.open(`http://localhost:3001${facturaDetalle.comprobante}`, '_blank')}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '7px 16px', borderRadius: 'var(--radius-md)',
-                      border: '1.5px solid var(--color-primary)', background: 'transparent',
-                      color: 'var(--color-primary)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer'
-                    }}
-                  >
-                    <Eye size={14} /> Ver archivo
-                  </button>
-                </div>
-              ) : (
-                <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-tertiary)' }}>
-                  Sin comprobante adjunto
-                </p>
-              )}
-            </div>
-
-            {/* ── ACCIONES ── */}
-            <div className="modal-actions">
-              <button
-                className="btn btn-ghost"
-                onClick={() => { setNotifDetalle(null); setFacturaDetalle(null); }}
-              >
-                Cerrar
-              </button>
-              {facturaDetalle.estado !== 'pagado' && (
-                <button
-                  className="btn btn-primary"
-                  onClick={handleConfirmarPago}
-                  disabled={confirmando || !facturaDetalle.comprobante}
-                  style={{ gap: 8 }}
-                >
-                  <CheckCircle size={15} />
-                  {confirmando ? 'Confirmando...' : 'Confirmar pago'}
-                </button>
-              )}
-            </div>
-          </>
-        ) : null}
-      </Modal>
 
       {/* MODAL: NUEVO CLIENTE PORTAL */}
       <div onClick={handleModalClick}>

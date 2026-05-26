@@ -10,7 +10,7 @@ import TopNav         from './components/TopNav';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // 2 - IMPORTO LAS PÁGINAS:
-import Dashboard     from './pages/Dashboard';
+// (Dashboard/Resumen removido - ahora el home es Facturas)
 import Clientes      from './pages/Clientes';
 import Servicios     from './pages/Servicios';
 import Factura       from './pages/Factura';
@@ -29,10 +29,10 @@ function AppLayout() {
         <div className="page-content">
           <Routes>
             {/* RUTAS DE ADMINISTRADOR */}
-            <Route path="/"               element={<ProtectedRoute adminOnly><Dashboard /></ProtectedRoute>} />
+            {/* / → HOME = FACTURAS (antes era Dashboard/Resumen) */}
+            <Route path="/"               element={<ProtectedRoute adminOnly><Factura /></ProtectedRoute>} />
             <Route path="/clientes"       element={<ProtectedRoute adminOnly><Clientes /></ProtectedRoute>} />
             <Route path="/servicios"      element={<ProtectedRoute adminOnly><Servicios /></ProtectedRoute>} />
-            <Route path="/factura"        element={<ProtectedRoute adminOnly><Factura /></ProtectedRoute>} />
             <Route path="/facturas-admin" element={<ProtectedRoute adminOnly><FacturasAdmin /></ProtectedRoute>} />
             <Route path="/perfil"         element={<ProtectedRoute adminOnly><Perfil /></ProtectedRoute>} />
 

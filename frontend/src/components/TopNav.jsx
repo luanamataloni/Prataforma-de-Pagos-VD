@@ -5,7 +5,7 @@
 // 1 - IMPORTO REACT, REACT ROUTER, ÍCONOS, CONTEXTO Y MODAL:
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Package, CreditCard, Wallet, LogOut, Settings, UserPlus, ChevronDown, Bell, CheckCheck } from 'lucide-react';
+import { Users, Package, CreditCard, Wallet, LogOut, Settings, UserPlus, ChevronDown, Bell, CheckCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Modal from './Modal';
 
@@ -28,11 +28,11 @@ async function req(url, opts = {}) {
 }
 
 // 3 - ÍTEMS SEGÚN ROL (SIN PERFIL, SE MUEVE AL DROPDOWN DE USUARIO):
+// ADMIN: Facturas (home) → Clientes → Servicios (sin Resumen)
 const ADMIN_NAV = [
-  { to: '/',          icon: LayoutDashboard, label: 'Resumen'   },
-  { to: '/clientes',  icon: Users,           label: 'Clientes'  },
-  { to: '/servicios', icon: Package,         label: 'Servicios' },
-  { to: '/factura',   icon: CreditCard,      label: 'Facturas'  },
+  { to: '/',          icon: CreditCard, label: 'Facturas'  },
+  { to: '/clientes',  icon: Users,      label: 'Clientes'  },
+  { to: '/servicios', icon: Package,    label: 'Servicios' },
 ];
 const CLIENT_NAV = [
   { to: '/mi-cuenta', icon: CreditCard, label: 'Mi Cuenta' },
@@ -343,22 +343,24 @@ export default function TopNav() {
                 minWidth: 200, zIndex: 1000, overflow: 'hidden'
               }}>
 
-                {/* OPCIÓN 1 - PERFIL DEL PROVEEDOR */}
-                <button
-                  onClick={handlePerfil}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    width: '100%', padding: '12px 16px', background: 'none',
-                    border: 'none', cursor: 'pointer', fontSize: '0.875rem',
-                    color: 'var(--text-primary)', textAlign: 'left',
-                    borderBottom: '1px solid var(--border-color)'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                >
-                  <Settings size={16} color="var(--color-primary)" />
-                  Perfil del Proveedor
-                </button>
+                {/* OPCIÓN 1 - PERFIL DEL PROVEEDOR (solo admin) */}
+                {user?.role === 'admin' && (
+                  <button
+                    onClick={handlePerfil}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      width: '100%', padding: '12px 16px', background: 'none',
+                      border: 'none', cursor: 'pointer', fontSize: '0.875rem',
+                      color: 'var(--text-primary)', textAlign: 'left',
+                      borderBottom: '1px solid var(--border-color)'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <Settings size={16} color="var(--color-primary)" />
+                    Perfil del Proveedor
+                  </button>
+                )}
 
                 {/* OPCIÓN 2 - NUEVO CLIENTE PORTAL (solo admin) */}
                 {user?.role === 'admin' && (

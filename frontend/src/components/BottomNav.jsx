@@ -4,16 +4,15 @@
 
 // 1 - IMPORTO REACT ROUTER, ÍCONOS Y CONTEXTO:
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Package, CreditCard, LogOut, Settings } from 'lucide-react';
+import { CreditCard, Users, Package, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 // 2 - ÍTEMS SEGÚN ROL:
+// ADMIN: Facturas (home) → Clientes → Servicios
 const ADMIN_NAV = [
-  { to: '/',          icon: LayoutDashboard, label: 'Resumen'   },
-  { to: '/clientes',  icon: Users,           label: 'Clientes'  },
-  { to: '/servicios', icon: Package,         label: 'Servicios' },
-  { to: '/factura',   icon: CreditCard,      label: 'Facturas'  },
-  { to: '/perfil',    icon: Settings,        label: 'Perfil'    },
+  { to: '/',          icon: CreditCard, label: 'Facturas'  },
+  { to: '/clientes',  icon: Users,      label: 'Clientes'  },
+  { to: '/servicios', icon: Package,    label: 'Servicios' },
 ];
 const CLIENT_NAV = [
   { to: '/mi-cuenta', icon: CreditCard, label: 'Mi Cuenta' },

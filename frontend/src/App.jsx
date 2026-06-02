@@ -10,7 +10,7 @@ import TopNav         from './components/TopNav';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // 2 - IMPORTO LAS PÁGINAS:
-// (Dashboard/Resumen removido - ahora el home es Facturas)
+ // (Dashboard/Resumen removido - ahora el home es Facturas)
 import Clientes      from './pages/Clientes';
 import Servicios     from './pages/Servicios';
 import Factura       from './pages/Factura';

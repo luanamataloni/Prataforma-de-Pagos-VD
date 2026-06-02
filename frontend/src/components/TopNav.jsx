@@ -234,7 +234,7 @@ export default function TopNav() {
                 position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 1000,
                 background: '#fff', border: '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                width: 360, maxHeight: 460, display: 'flex', flexDirection: 'column',
+                width: 'min(360px, calc(100vw - 80px))', maxHeight: 460, display: 'flex', flexDirection: 'column',
                 overflow: 'hidden'
               }}>
 

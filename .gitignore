@@ -5,7 +5,8 @@ dist-ssr
 *.local
 backend/uploads/*
 !backend/uploads/.gitkeep
-backend/database/pagos.db
+# backend/database/pagos.db (Comentado para incluirlo en el repositorio)
+!backend/database/pagos.db
 .env
 .env.local
 .env.development.local
